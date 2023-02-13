@@ -3,6 +3,12 @@ uuid = "c061e33b-2451-47b3-8b22-ec396b8f69c0"
 authors = ["frederic.testard <frederic.testard@sgcib.com> and contributors"]
 version = "0.1.0"
 
+[deps]
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
+
 [compat]
 julia = "1"
 
