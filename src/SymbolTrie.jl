@@ -1,4 +1,4 @@
-# Trie but for symbols
+# Trie but with symbols instead of chars / Strings
 # adapted from DataStructures.jl
 
 mutable struct SymbolTrie{T}
