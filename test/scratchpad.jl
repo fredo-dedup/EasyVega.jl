@@ -17,8 +17,6 @@ t = EasyVega.VGTree()
 
 t = EasyVega.VGTree(a="abcd", b_tu=1, b_do=0)
 
-<<<<<<< HEAD
-=======
 
 t
 
@@ -62,7 +60,6 @@ dat
 
 dat.abcd
 
->>>>>>> f8010c9 (VGTrie)
 EasyVega.VGTree
 
 [1,2,3] isa AbstractString
