@@ -17,6 +17,52 @@ t = EasyVega.VGTree()
 
 t = EasyVega.VGTree(a="abcd", b_tu=1, b_do=0)
 
+<<<<<<< HEAD
+=======
+
+t
+
+
+t = EasyVega.VGTrie()
+
+t = EasyVega.VGTrie(a=12, d="abcd", d_by=4, d_no=:sss)  # FIXME both d="abcd" and d=(by=..,no=..) exist
+
+t = EasyVega.VGTrie(a=12, d=[1,2,(a=:gr, b=45)])  # FIXME both d="abcd" and d=(by=..,no=..) exist
+
+
+first(eltype(Dict{Symbol, Any}))
+
+
+t = EasyVega.VGTrie(
+    value = 32,
+    transform=[(type="stack",groupby=[:x], sort_field=:c, field=:y, sort="abcd")]
+)
+
+
+keys(t)
+t
+t.value
+t.is_key
+
+
+sort(keys(t))
+
+keytype(::Dict{A,B}) where {A,B} = A
+
+keytype(Dict{Symbol, Any}())
+
+
+dat = EasyVega.Data(
+    value = 32,
+    transform=[(type="stack",groupby=[:x], sort_field=:c, field=:y)]
+);
+
+
+dat
+
+dat.abcd
+
+>>>>>>> f8010c9 (VGTrie)
 EasyVega.VGTree
 
 [1,2,3] isa AbstractString
