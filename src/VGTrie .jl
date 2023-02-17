@@ -86,49 +86,6 @@ function keys_with_prefix(t::VGTrie, prefix::Vector)
     (st != nothing) ? keys(st, prefix) : []
 end
 
-#######  more VG specific functions ##########################################
-
-# valid value for tree leaves
-const LeafType = Union{
-    String,
-    Symbol,
-    Number,
-    Date, DateTime, Time,
-    Nothing
-}
-
-# general constructor
-function VGTrie(;nargs...)
-    t = VGTrie{LeafType}( Symbol )
-    for (k,v) in nargs
-        sk = Symbol.(split(String(k), "_")) # split by symbol separated by "_"
-        insert!(t, sk, v)
-    end
-    t
-end
-
-
-function Base.insert!(t::VGTrie, index::Vector, item::LeafType)
-    t[index] = item
-end
-
-function Base.insert!(t::VGTrie, index::Vector, items::NamedTuple)
-    for (k,v) in pairs(items)
-        sk = Symbol.(split(String(k), "_")) # split by symbol separated by "_"
-        insert!(t, vcat(index, sk), v)
-    end
-end
-
-function Base.insert!(t::VGTrie, index::Vector, items::Vector)
-    for (i,v) in enumerate(items)
-        insert!(t, vcat(index, [i]), v)
-    end
-end
-
-function Base.insert!(t::VGTrie, index::Vector, items::T) where T
-    error("type $T not allowed in VGTrie")
-end
-
 #####  printing  #######################################
 
 ## By default, print the tree of the spec
@@ -152,8 +109,34 @@ function printtrie(io::IO, t::VGTrie; indent=0)
     end
 end
 
+function toJSON(t::VGTrie)
+    ctyp = keytype(t.children)
+    if t.is_key
+        toJSON(t.value)
+    elseif keytype(t.children) == Symbol
+        println("{")
+        for k in sort(collect(keys(t.children)))
+            toJSON(k)
+            print(":")
+            toJSON(t.children[k])
+            println(",")
+        end
+        println("}")
+    else
+        println("[")
+        for k in sort(collect(keys(t.children)))
+            toJSON(t.children[k])
+            println(",")
+        end
+        println("]")
+    end
+end
 
+toJSON(v::String) = print("\"$v\"")
+toJSON(v::Symbol) = print("\"$v\"")
+toJSON(v::Number) = print("$v")
+toJSON(v::Date) = print("\"$v\"")
+toJSON(v::DateTime) = print("\"$v\"")
+toJSON(v::Time) = print("\"$v\"")
+toJSON(v::Nothing) = print("null")
 
-# # for VSCodeServer LimitIO : single char printing
-# printtree(io::IO, c::Char; indent=0) = println(io, c)
-# printtree(io::IO, s::AbstractString; indent=0) = println(io, s)
