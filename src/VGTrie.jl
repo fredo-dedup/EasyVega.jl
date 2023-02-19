@@ -109,34 +109,4 @@ function printtrie(io::IO, t::VGTrie; indent=0)
     end
 end
 
-function toJSON(t::VGTrie)
-    ctyp = keytype(t.children)
-    if t.is_key
-        toJSON(t.value)
-    elseif keytype(t.children) == Symbol
-        println("{")
-        for k in sort(collect(keys(t.children)))
-            toJSON(k)
-            print(":")
-            toJSON(t.children[k])
-            println(",")
-        end
-        println("}")
-    else
-        println("[")
-        for k in sort(collect(keys(t.children)))
-            toJSON(t.children[k])
-            println(",")
-        end
-        println("]")
-    end
-end
-
-toJSON(v::String) = print("\"$v\"")
-toJSON(v::Symbol) = print("\"$v\"")
-toJSON(v::Number) = print("$v")
-toJSON(v::Date) = print("\"$v\"")
-toJSON(v::DateTime) = print("\"$v\"")
-toJSON(v::Time) = print("\"$v\"")
-toJSON(v::Nothing) = print("null")
 

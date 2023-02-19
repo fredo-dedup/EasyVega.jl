@@ -4,19 +4,21 @@
 # - they have an id, used for reference in final VG
 # - they hold their dependencies to other elements in the refs field
 
+export VG
 
 struct VGElement{T}
     trie::VGTrie
     refs::Set
 end
 
-ids(s::VGElement{T}) where T = "$(T)_$(objectid(s))"
+idof(s::VGElement{T}) where T = "$(T)_$(objectid(s))"
 kindof(::VGElement{T}) where T = T
 
 # valid value for tree leaves
 const LeafType = Union{
-    String,
+    AbstractString,
     Symbol,
+    Char,
     Number,
     Date, DateTime, Time,
     Nothing
@@ -37,6 +39,7 @@ function Base.insert!(e::VGElement, index::Vector, item::LeafType)
     e.trie[index] = item
 end
 
+
 function Base.insert!(e::VGElement, index::Vector, items::NamedTuple)
     for (k,v) in pairs(items)
         sk = Symbol.(split(String(k), "_")) # split by symbol separated by "_"
@@ -44,56 +47,48 @@ function Base.insert!(e::VGElement, index::Vector, items::NamedTuple)
     end
 end
 
+
 function Base.insert!(e::VGElement, index::Vector, items::Vector)
     for (i,v) in enumerate(items)
         insert!(e, vcat(index, [i]), v)
     end
 end
 
-function Base.insert!(e::VGElement, index::Vector, item::VGElement)
-    for k in keys(item.trie)
-        insert!(e, vcat(index, k), item.trie[k])
+
+function Base.insert!(e::VGElement, index::Vector, item::VGElement{T}) where {T}
+    if T in [:Data, :Signal, :Scale] # add the reference if Specialized Element
+        insert!(e, index, idof(item))
+
+    else # add to tree for other kinds of elements
+        for k in keys(item.trie)
+            insert!(e, vcat(index, k), item.trie[k])
+        end
+        for r in item.refs
+            push!(e.refs, r)
+        end
     end
-    for r in item.refs
-        push!(e.refs, r)
+end
+
+# catch remaining types
+function Base.insert!(e::VGElement, index::Vector, item::T) where T
+    if Tables.istable(item)
+        insert!(e, index, Tables.rowtable(item))
+    else
+        error("type $T not allowed")
     end
 end
 
 
-# catch non valid items to throw clear error message
-function Base.insert!(e::VGElement, index::Vector, items::T) where T
-    error("type $T not allowed in VGTrie")
+## By default, print the tree of the spec
+function Base.show(io::IO, t::VGElement)
+    println(io, "VGElement{$(kindof(t))}")
+    printtrie(io, t.trie)
+    println(io, length(t.refs), " refs")
 end
 
-
-
-########### Scale
-const Scale = VGElement{:Scale}
-
-Scale(typ::Symbol; nargs...) = Scale(type=typ; nargs...)
-
-scalex = Scale(:linear, sort=true, group_by=:x, domain=[0,12])
-
-Scale(a=32)
-
-function (s::Scale)(t::VGElement)
-    t.trie[[:scale]] = ids(s)
-    push!(t.refs, s) # annotate that there is a new scale in the Trie now
-    t
-end
-
-(s::Scale)(; nargs...) = s( VGElement{:generic}(;nargs...) )
-
-ttt = VGElement{:generic}(field=:ab)
-scalex(ttt)
-
-scalex(field= :u)
-kindof(scalex)
 
 #############  Data
 const Data = VGElement{:Data}
-
-src = Data(values= [(a=4, b="A"), (a=9, b="B"),(a=2, b="C"), ])
 
 # translate  data.sym into {data="dataname", field = "sym"}
 function Base.getproperty(d::Data, sym::Symbol)
@@ -102,13 +97,13 @@ function Base.getproperty(d::Data, sym::Symbol)
     (sym == :refs) && return getfield(d, :refs)
     # FIXME : issue if fields are named "refs" or "trie"
 
-    v = VGElement{:generic}(data=ids(d), field=sym)
+    v = VGElement{:generic}(data=idof(d), field=sym)
     push!(v.refs, d) # annotate that there is a new data in the Trie now
     v
 end
 
-src.abcd
-kindof(src)
+# src.abcd
+# kindof(src)
 
 ################# VG ##################
 # final Element, collects refs (as other VGElement), but also
@@ -116,25 +111,34 @@ kindof(src)
 
 const VG = VGElement{:final}
 
-function VG(;nargs...)
-f = VGElement{:generic}(;nargs...) # not :final otherwise the function calls itself
-defs = Dict{Symbol, Vector}()
-for r in f.refs
-    t = kindof(r)
-    haskey(defs, t) || (defs[t] = VGElement[])
+# VGElement type to field map for final VGElement
+fmap = Dict(:Data => :data, :Scale => :scales, :Signal => :signals )
 
-    if ! haskey(r.trie, [:name])  # assign the name if not there
-        r.trie[[:name]] = ids(r)
+
+function VG(;nargs...)
+    f = VGElement{:generic}(;nargs...) # not :final otherwise the function calls itself
+    defs = Dict{Symbol, Vector}()
+    for r in f.refs
+        t = kindof(r)
+        haskey(defs, t) || (defs[t] = VGElement[])
+
+        if ! haskey(r.trie, [:name])  # assign the name if not there
+            r.trie[[:name]] = idof(r)
+        end
+
+        push!(defs[t], r)
     end
 
-    push!(defs[t], r)
+    for t in keys(defs)
+        goodname = fmap[t]
+        for (i,e) in enumerate(defs[t])
+            # all Data, .. elements have to be expanded and not default to their names
+            #  hence they are cast in generic subtypes
+            insert!(f, [goodname; i], VGElement{:generic}(e.trie, Set()) )
+        end
+    end
+    VGElement{:final}(f.trie, Set())
 end
 
-for t in keys(defs)
-    insert!(f, [t], defs[t])
-end
-VGElement{:final}(f.trie, Set())
-end
-
-VG( marks_encoding_x= src.y, axes= scalex(src.b), height=15 ).trie
+# VG( marks_encoding_x= src.y, axes= scalex(src.b), height=15 ).trie
 

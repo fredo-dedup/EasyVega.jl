@@ -1,128 +1,106 @@
-###############################################################################
-#  printing / displaying functions
-###############################################################################
-
-## conversion to a tree (a dict of dicts)
-
-function totree(vl::VG)
-    kdict = Dict{String,Any}()
-    for k in sort(keys(vl.trie))
-        ks = split(k, "_")
-        # build dict tree if no set yet
-        pardict = kdict
-        for k2 in ks[1:end-1]
-            if ! haskey(pardict, k2)
-                pardict[k2] = Dict{String,Any}()
-            end
-            pardict = pardict[k2]
+function toJSON(io::IO, t::VGTrie)
+    if t.is_key
+        toJSON(io, t.value)
+    elseif keytype(t.children) == Symbol
+        print(io, "{")
+        sep = false
+        for k in sort(collect(keys(t.children)))
+            sep && print(io, ",")
+            toJSON(io, k)
+            print(io, ":")
+            toJSON(io, t.children[k])
+            sep = true
         end
-    
-        pardict[ks[end]] = totree(vl.trie[k])
-    end
-    kdict
-end
-totree(e::LeafType)   = e
-totree(v::Vector) = map(totree, v)
-totree(e::NamedTuple) = e
-
-## By default, print the tree of the spec
-function Base.show(io::IO, vl::VG)
-    printtree(io, totree(vl))
-end
-
-function printtree(io::IO, subtree::Union{NamedTuple, Dict, Vector}; indent=0)
-    for (k,v) in pairs(subtree)
-        if isa(v, LeafType)
-            println(io, " " ^ indent, k, " : ", v)
-            
-        elseif isa(v, Vector) && all( e -> isa(e, LeafType), v ) # vector printable on one line
-            rs = repr(v)
-            if length(rs) > 50
-                rs = rs[1:50] * "..."
-            end
-            println(io, " " ^ indent, k, " : ", rs)
-            
-        else
-            println(io, " " ^ indent, k, " : ")
-            printtree(io, v, indent=indent+2)
+        print(io, "}")
+    else
+        print(io, "[")
+        sep = false
+        for k in sort(collect(keys(t.children)))
+            sep && print(io, ",")
+            toJSON(io, t.children[k])
+            sep = true
         end
-        
-        # escape if long vector
-        if isa(subtree, Vector) && (k > 20)
-            println(io, " " ^ indent, "$k - $(length(subtree)) : ...")
-            break
-        end
+        print(io, "]")
     end
 end
 
-# for VSCodeServer LimitIO : single char printing
-printtree(io::IO, c::Char; indent=0) = println(io, c)
-printtree(io::IO, s::AbstractString; indent=0) = println(io, s)
+toJSON(io::IO, v::AbstractString) = print(io, "\"$v\"")
+toJSON(io::IO, v::Char) = print(io, "\"$v\"")
+toJSON(io::IO, v::Symbol) = print(io, "\"$v\"")
+toJSON(io::IO, v::Number) = print(io, "$v")
+toJSON(io::IO, v::Date) = print(io, "\"$v\"")
+# toJSON(io::IO, v::DateTime) = print(io, "\"$v\"")
+toJSON(io::IO, v::DateTime) = print(io, "$(Dates.datetime2unix(v))")
 
-## displaying the graph
+toJSON(io::IO, v::Time) = print(io, "\"$v\"")
+toJSON(io::IO, v::Nothing) = print(io, "null")
 
-# function Base.show(io::IO, m::MIME"image/svg+xml", v::VG)
-#     # translate to dict and then to JSON
-#     iob = IOBuffer()
-#     JSON.print(iob, totree(v))
-    
-#     # create command for server
-#     req = MsgType("render-svg", "", String(take!(iob)), [])
-    
-#     println(req)
-#     ret = postAndWait(req, 10000)  # bail out after 10 sec
-#     try
-#         if ret.label == "svg"
-#             print(io, ret.text)
-#         elseif ret.label == "error"
-#             @error "VG error : $(ret.detail)"
-#         else
-#             @error "Unknown server message : $(ret.label)"
-#         end
-#     catch e    
-#         error(e)
+
+function Base.show(io::IO, m::MIME"text/plain", v::VG)
+    show(io, v.trie)  # do not show refs
+    return
+end
+
+# function Base.show(io::IO, v::AbstractVegaSpec)
+#     if !get(io, :compact, true)
+#         Vega.printrepr(io, v, include_data=:short)
+#     else
+#         print(io, summary(v))
 #     end
+#     return
 # end
 
-# function Base.show(io::IO, m::MIME"image/png", v::VG)
-#     # translate to dict and then to JSON
-#     iob = IOBuffer()
-#     JSON.print(iob, totree(v))
-    
-#     # create command for server
-#     req = MsgType("render-png", "", String(take!(iob)), [])
-    
-#     println(req.label)
-#     ret = postAndWait(req, 10000)  # bail out after 10 sec
-#     try
-#         if ret.label == "png"
-#             print(io, ret.text)
-#         elseif ret.label == "error"
-#             @error "VG error : $(ret.detail[1:min(500,end)])"
-#         else
-#             @error "Unknown server message : $(ret.label)"
-#         end
-#     catch e    
-#         error(e)
+# function convert_vg_to_x(v::VGSpec, script)
+#     full_script_path = joinpath(vegalite_app_path, "node_modules", "vega-cli", "bin", script)
+#     p = open(Cmd(`$(nodejs_cmd()) $full_script_path -l error`, dir=vegalite_app_path), "r+")
+#     writer = @async begin
+#         our_json_print(p, v)
+#         close(p.in)
 #     end
+#     reader = @async read(p, String)
+#     wait(p)
+#     res = fetch(reader)
+#     if p.exitcode != 0
+#         throw(ArgumentError("Invalid spec"))
+#     end
+#     return res
 # end
 
-# function our_json_print(io, spec::VGSpec)
-#     JSON.print(io, add_encoding_types(Vega.getparams(spec)))
+# function convert_vg_to_svg(v::VGSpec)
+#     vg2svg_script_path = joinpath(vegalite_app_path, "vg2svg.js")
+#     p = open(Cmd(`$(nodejs_cmd()) $vg2svg_script_path`, dir=vegalite_app_path), "r+")
+#     writer = @async begin
+#         our_json_print(p, v)
+#         close(p.in)
+#     end
+#     reader = @async read(p, String)
+#     wait(p)
+#     res = fetch(reader)
+#     if p.exitcode != 0
+#         throw(ArgumentError("Invalid spec"))
+#     end
+#     return res
 # end
 
-# function Base.show(io::IO, m::MIME"application/vnd.vegalite.v4+json", v::VG)
-#     VegaLite.our_json_print(io, VegaLite.VGSpec(totree(v)))
+Base.Multimedia.istextmime(::MIME{Symbol("application/vnd.vega.v5+json")}) = true
+
+function Base.show(io::IO, m::MIME"application/vnd.vega.v5+json", v::VG)
+    toJSON(io, v.trie)
+end
+
+# function Base.show(io::IO, m::MIME"image/svg+xml", v::VGSpec)
+#     print(io, convert_vg_to_svg(v))
 # end
 
-# function Base.show(io::IO, m::MIME"application/vnd.vega.v5+json", v::VG)
-#     print(io, VegaLite.convert_vl_to_vg(VegaLite.VGSpec(totree(v))))
+# function Base.show(io::IO, m::MIME"application/vnd.julia.fileio.htmlfile", v::VGSpec)
+#     writehtml_full(io, v)
 # end
 
-# function Base.show(io::IO, m::MIME"application/vnd.julia.fileio.htmlfile", v::VG)
-#     VegaLite.writehtml_full(io, VegaLite.VGSpec(totree(v)))
+# function Base.show(io::IO, m::MIME"application/prs.juno.plotpane+html", v::VGSpec)
+#     writehtml_full(io, v)
 # end
 
-# function Base.show(io::IO, m::MIME"application/prs.juno.plotpane+html", v::VG)
-#     VegaLite.writehtml_full(io, VegaLite.VGSpec(totree(v)))
+# Base.showable(m::MIME"text/html", v::VGSpec) = isdefined(Main, :PlutoRunner)
+# function Base.show(io::IO, m::MIME"text/html", v::VGSpec)
+#     writehtml_partial_script(io, v)
 # end
