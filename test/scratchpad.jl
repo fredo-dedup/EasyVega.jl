@@ -121,7 +121,7 @@ ttt = VG(width=400, height=300, padding=20, background= "#ddb", #:white,
 ###########
 using CSV
 
-maison = """
+io = IOBuffer( """
 DATE,PM25,CO2,TEMP,HUMI,PM25MAX,PM25MIN,CO2MAX,CO2MIN,TEMPMAX,TEMPMIN,HUMIMAX,HUMIMIN,TEMPUNIT
 2023-02-18 13:00:00,1.6,720,18,51,2.1,1.3,1075,653,19,17,58,49,C
 2023-02-18 14:00:00,3.6,676,19,49,7.0,1.2,1075,601,20,17,58,47,C
@@ -154,36 +154,19 @@ DATE,PM25,CO2,TEMP,HUMI,PM25MAX,PM25MIN,CO2MAX,CO2MIN,TEMPMAX,TEMPMIN,HUMIMAX,HU
 2023-02-19 17:00:00,4.4,719,19,49,8.5,0.8,814,561,19,18,54,47,C
 2023-02-19 18:00:00,5.0,763,19,49,8.5,0.8,836,561,19,18,54,47,C
 2023-02-19 19:00:00,5.6,710,19,49,8.5,0.8,814,561,19,18,54,47,C
-"""
+""" )
 
-io = IOBuffer(maison)
+using CSV
 tb = CSV.File(io, dateformat="yyyy-mm-dd HH:MM:SS") |> DataFrame
 
-
-tb.date2 = map(d -> "$(d).000Z", tb.DATE) 
-
-dattb = Data(
-    values=tb,
-    transform= [
-        (
-            type="formula", 
-            as=:date,
-            expr= "datetime(year(datum.DATE), month(datum.DATE), date(datum.DATE), hours(datum.DATE), minutes(datum.DATE), seconds(datum.DATE))"
-        )
-    ]
-)
+dattb = Data( values=tb )
 
 # xscale = LinearScale(range="width",   domain=dattb.CO2, nice=true)
-tscale = TimeScale(range="width",   domain=dattb.date)
+tscale = TimeScale(range="width",   domain=dattb.DATE)
 yscale = LinearScale(range="height",  domain=dattb.PM25, nice=true, zero=true)
 y2scale = LinearScale(range="height",  domain=dattb.CO2, nice=true, zero=true)
 
 cscale = OrdinalScale(range="category", domain=dattb.a)
-
-smark = SymbolMark(shape="circle", from_data= dattb,
-    encode_enter=(xc=xscale(dattb.CO2), yc=yscale(dattb.PM25), 
-    size_value=100)
-)
 
 smark = SymbolMark(shape="circle", from_data= dattb,
     encode_enter=(xc=xscale(dattb.CO2), yc=yscale(dattb.PM25), 
@@ -203,12 +186,53 @@ ttt = VG(width=400, height=300, padding=20, background= "#ccc",
     axes = [ tscale(orient="bottom"), yscale(orient="left"), y2scale(orient="right") ],
     marks= [ lmark, lmark2 ])
 
+f2 = Facet(groupby= dat.x)
 
 io = IOBuffer()
 EasyVega.toJSON(io,ttt.trie)
 String(take!(io))
-fl = Dates.datetime2unix(DateTime(2023,1,20,1,1,1))
-"$fl"
+
+
+###############
+
+fn = "/home/fred/logs/temtop/compil 02-18 -> 03-03.csv"
+histo = CSV.File(fn, dateformat="yyyy-mm-dd HH:MM:SS", normalizenames=true) |> DataFrame
+
+histdat = Data(values=sort!(histo, :DATE))
+
+tscale = TimeScale(range="width",   domain=histdat.DATE)
+yscale = LinearScale(range="height",  domain=histdat.PM2_5, nice=true, zero=true)
+y2scale = LinearScale(range="height",  domain=histdat.CO2, nice=true, zero=true)
+
+lmark = LineMark(from_data= histdat,
+    encode_enter=(x=tscale(histdat.DATE), y=yscale(histdat.PM2_5), stroke_value="#d666")
+)
+
+lmark2 = LineMark(from_data= histdat,
+    encode_enter=(x=tscale(histdat.DATE), y=y2scale(histdat.CO2), stroke_value="#66d")
+)
+
+
+ttt = VG(width=800, height=300, padding=20, background= "#ccb",
+    axes = [ tscale(orient="bottom"), yscale(orient="left"), y2scale(orient="right") ],
+    marks= [ lmark, lmark2 ])
+
+tscale = TimeScale(range="width",   domain=histdat.DATE)
+yscale = LinearScale(range="height",  domain=histdat.TEMP, nice=true, zero=true)
+y2scale = LinearScale(range="height",  domain=histdat.HUMI, nice=true, zero=true)
+
+lmark = LineMark(from_data= histdat,
+    encode_enter=(x=tscale(histdat.DATE), y=yscale(histdat.TEMP), stroke_value="#d666")
+)
+
+lmark2 = LineMark(from_data= histdat,
+    encode_enter=(x=tscale(histdat.DATE), y=y2scale(histdat.HUMI), stroke_value="#66d")
+)
+
+ttt = VG(width=800, height=300, padding=20, background= "#ccb",
+    axes = [ tscale(orient="bottom"), yscale(orient="left"), y2scale(orient="right") ],
+    marks= [ lmark, lmark2 ])
+
 
 
 #################

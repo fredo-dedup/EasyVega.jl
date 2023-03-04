@@ -1,17 +1,35 @@
 ######## VGElements ############################################################
-# this is the type for Data, Scale, Signal, and the VG graph definition
+# this is the type for Data, Scale, Signal, (the named elements), other generic
+#  tree branches and the final graph definition VG
 # - they can implement syntax shortcuts (data.x, scale(...), etc.. ) 
 # - they have an id, used for reference in final VG
-# - they hold their dependencies to other elements in the refs field
+# - they hold their dependencies to other elements in the tracking field
 
 export VG
 
 struct VGElement{T}
     trie::VGTrie
-    refs::Set
+    tracking
 end
 
-idof(s::VGElement{T}) where T = "$(T)_$(objectid(s))"
+# naming algo, to ensure unique and short names
+counter = 1
+refs = Dict{VGElement, String}()
+
+function idof(s::VGElement{T}) where T
+    global counter, refs
+
+    haskey(refs, s) && return refs[s]
+
+    n = counter
+    counter += 1
+    prefix = String(T)[1:2]
+    refs[s] = "$prefix-$n"
+end
+
+# idof(s::VGElement{T}) where T = "$(T)_$(objectid(s))"
+
+
 kindof(::VGElement{T}) where T = T
 
 # valid value for tree leaves
@@ -26,7 +44,8 @@ const LeafType = Union{
 
 # general constructor
 function VGElement{T}(;nargs...) where T 
-    e = VGElement{T}( VGTrie{LeafType}(Symbol), Set() )
+    e = VGElement{T}( VGTrie{LeafType}(Symbol), Tracking() )
+    e.tracking.dependson[e] = Set() 
     for (k,v) in nargs
         sk = Symbol.(split(String(k), "_")) # split by symbol separated by "_"
         insert!(e, sk, v)
@@ -54,91 +73,143 @@ function Base.insert!(e::VGElement, index::Vector, items::Vector)
     end
 end
 
-
 function Base.insert!(e::VGElement, index::Vector, item::VGElement{T}) where {T}
-    if T in [:Data, :Signal, :Scale] # add the reference if Specialized Element
+    if isnamed(item)  # only insert reference to it, not the whole thing
         insert!(e, index, idof(item))
-
-    else # add to tree for other kinds of elements
+    else
+        # add the trie to the trie of e 
         for k in keys(item.trie)
             insert!(e, vcat(index, k), item.trie[k])
         end
-        for r in item.refs
-            push!(e.refs, r)
-        end
     end
+    updateTracking!(e, index, item)
 end
 
 # catch remaining types
 function Base.insert!(e::VGElement, index::Vector, item::T) where T
-    if Tables.istable(item)
-        insert!(e, index, Tables.rowtable(item))
+    if Tables.istable(item) 
+        # do not use insert! here because we don't want to split table field names
+        # on  '_' as insert! does by default
+        for (i,row) in enumerate(Tables.rowtable(item))
+            for (k,v) in pairs(row)
+                insert!(e, [index; i; k], v)
+            end
+        end
     else
         error("type $T not allowed")
     end
 end
 
 
-## By default, print the tree of the spec
+## By default, print the id of the spec
 function Base.show(io::IO, t::VGElement)
-    println(io, "VGElement{$(kindof(t))}")
-    printtrie(io, t.trie)
-    println(io, length(t.refs), " refs")
+    print(io, idof(t))
 end
 
 
-#############  Data
-const Data = VGElement{:Data}
+################ named VGElements   ###########################################
 
-# translate  data.sym into {data="dataname", field = "sym"}
-function Base.getproperty(d::Data, sym::Symbol)
-    # treat VGElement fieldnames as usual
-    (sym == :trie) && return getfield(d, :trie)
-    (sym == :refs) && return getfield(d, :refs)
-    # FIXME : issue if fields are named "refs" or "trie"
+# map from VGElement type to field map for final VGElement
+DefName = Dict(
+    :Mark => :marks,
+    :Signal => :signals,
+    :Scale => :scales,
+    :Data => :data,
+    :Facet => nothing,  # this one goes in GroupMarks, no def necessary
+    :Group => :marks,
+)
 
-    v = VGElement{:generic}(data=idof(d), field=sym)
-    push!(v.refs, d) # annotate that there is a new data in the Trie now
-    v
+isnamed(e::VGElement{T}) where {T} = T in keys(DefName)
+
+
+#######   reference and group tracking  #########################################
+
+struct Tracking
+    mentions::Dict{VGElement, Any}  # named elements mentionned and their lowest common group
+    fixeddefs::Dict{VGElement, Any} # named elements defined in a group (not just mentionned)
+    dependson::Dict{VGElement, Set}  # for each element the set of other elements they depend on
+    grouppaths::Dict{VGElement, Vector} # path leading to each (i.e. group ancestors)
+    children::Dict{VGElement, Set}  
 end
 
-# src.abcd
-# kindof(src)
+Tracking() = Tracking(
+    Dict{VGElement, Any}(),
+    Dict{VGElement, Any}(),
+    Dict{VGElement, Set}(),
+    Dict{VGElement, Vector}(),
+    Dict{VGElement, Set}()
+)
 
-################# VG ##################
-# final Element, collects refs (as other VGElement), but also
-# builds the data, scale fields to have a final representation
+function Base.show(io::IO, t::Tracking)
+    println(io, "mentions :")
+    for (k,v) in t.mentions
+        println(io, "  - $k : $v")
+    end
+    println(io, "fixeddefs :")
+    for (k,v) in t.fixeddefs
+        println(io, "  - $k : $v")
+    end
+    println(io, "dependson :")
+    for (k,v) in t.dependson
+        println(io, "  - $k : $(collect(v))")
+    end
+    println(io, "grouppaths :")
+    for (k,v) in t.grouppaths
+        println(io, "  - $k : $v")
+    end
+    println(io, "children :")
+    for (k,v) in t.children
+        println(io, "  - $k : $(collect(v))")
+    end
+end
 
-const VG = VGElement{:final}
+function updateTracking!(e::VGElement, index::Vector, item::VGElement)
+    tracks = e.tracking
+    ntracks = item.tracking
 
-# VGElement type to field map for final VGElement
-fmap = Dict(:Data => :data, :Scale => :scales, :Signal => :signals )
-
-
-function VG(;nargs...)
-    f = VGElement{:generic}(;nargs...) # not :final otherwise the function calls itself
-    defs = Dict{Symbol, Vector}()
-    for r in f.refs
-        t = kindof(r)
-        haskey(defs, t) || (defs[t] = VGElement[])
-
-        if ! haskey(r.trie, [:name])  # assign the name if not there
-            r.trie[[:name]] = idof(r)
+    merge!(tracks.grouppaths, ntracks.grouppaths)
+    merge!(tracks.children, ntracks.children)
+    
+    #### update mentions
+    for (el, gr) in ntracks.mentions
+        if haskey(tracks.mentions, el) # lowest common group is current group
+            tracks.mentions[el] = nothing
+        else
+            tracks.mentions[el] = gr
         end
-
-        push!(defs[t], r)
+    end
+    # add the item itself to mentions, if named element
+    if isnamed(item)
+        tracks.mentions[item] = nothing
     end
 
-    for t in keys(defs)
-        goodname = fmap[t]
-        for (i,e) in enumerate(defs[t])
-            # all Data, .. elements have to be expanded and not default to their names
-            #  hence they are cast in generic subtypes
-            insert!(f, [goodname; i], VGElement{:generic}(e.trie, Set()) )
-        end
+    #### update depends-on list (for each mentionned element, list all elements they depend on) 
+    # first copy dependency info from item
+    for (el, els) in ntracks.dependson
+        isnamed(el) && (tracks.dependson[el] = els)
     end
-    VGElement{:final}(f.trie, Set())
+    # second, add to the list of what e depends on : item and what item depends on
+    haskey(tracks.dependson, e) || ( tracks.dependson[e] = Set() )
+    isnamed(item) && push!(tracks.dependson[e], item)
+    union!(tracks.dependson[e], ntracks.dependson[item])
+
+    #### update defs
+    for (el, pos) in ntracks.fixeddefs
+        tracks.fixeddefs[el] = pos
+    end
+    # add this element if we are in a definition
+    if isdef(e, index) && isnamed(item)
+        tracks.fixeddefs[item] = nothing
+    end
 end
 
-# VG( marks_encoding_x= src.y, axes= scalex(src.b), height=15 ).trie
 
+function isdef(e::VGElement, index::Vector, allowedtypes=values(DefName))
+    (length(index) == 2) || return false
+    isa(index[end], Int) || return false
+    (index[end-1] in allowedtypes) || return false
+    # check now that we are in root node or a GroupMark
+    (kindof(e) == :prefinal) && return true
+    (kindof(e) == :Group) && return true
+    return false
+end

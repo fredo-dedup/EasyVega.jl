@@ -4,21 +4,11 @@ export Signal
 
 const Signal = VGElement{:Signal}
 
-#  make scale(...) expand to (scale= scaleid, ...)
-# function (s::Scale)(t::VGElement)
-#     t.trie[[:scale]] = idof(s)
-#     push!(t.refs, s) # annotate that there is a new scale in the Trie now
-#     t
+# Data insertion 
+# function Base.insert!(e::VGElement, index::Vector, item::Signal) 
+#     insert!(e, index, idof(item)) # only reference at construction stage
+#     updateTracking!(e, index, item)
 # end
-
-# (s::Scale)(; nargs...) = s( VGElement{:generic}(;nargs...) )
-
-
-
-
-# LinearScale(;nargs...) = Scale(type=:linear; nargs...)
-# LogScale(;nargs...) = Scale(type=:log; nargs...)
-# PowScale(;nargs...) = Scale(type=:pow; nargs...)
 
 
 

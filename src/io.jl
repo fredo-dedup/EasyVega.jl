@@ -30,7 +30,7 @@ toJSON(io::IO, v::Symbol) = print(io, "\"$v\"")
 toJSON(io::IO, v::Number) = print(io, "$v")
 toJSON(io::IO, v::Date) = print(io, "\"$v\"")
 # toJSON(io::IO, v::DateTime) = print(io, "\"$v\"")
-toJSON(io::IO, v::DateTime) = print(io, "$(Dates.datetime2unix(v))")
+toJSON(io::IO, v::DateTime) = print(io, "$(round(Int64, Dates.datetime2unix(v)*1000))")
 
 toJSON(io::IO, v::Time) = print(io, "\"$v\"")
 toJSON(io::IO, v::Nothing) = print(io, "null")
