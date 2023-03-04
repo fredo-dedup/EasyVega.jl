@@ -5,7 +5,9 @@
 const VG = VGElement{:final}
 
 function VGElement{:final}(;nargs...)
-    f = GroupMark(;nargs...) # same as groupmark
+    f = VGElement{:prefinal}(;nargs...) 
+    wraplevel!(f)
+
     tracks = f.tracking
     # println(tracks)
 
@@ -30,15 +32,20 @@ function VGElement{:final}(;nargs...)
             # test if all the elements it depends on have a fixed position
             if all( haskey(fixedpos, p) for p in tracks.dependson[k] ) 
                 # if yes, we can fix it to the lowest common group of dependson
-                # FIXME : constraint is the other way around
-                if length(tracks.dependson[k]) == 0
-                    grp = gr
-                else 
-                    dogrs = [ fixedpos[e] for e in tracks.dependson[k] ]
-                    ps = [ tracks.grouppaths[g] for g in dogrs ]
-                    grps = mincommonindex(ps...)
-                    grp = (length(grps)==0) ? f : grps[end]
-                end
+                
+                
+                # FIXME : constraint is the other way around !
+                # if length(tracks.dependson[k]) == 0
+                #     grp = gr
+                # else 
+                #     dogrs = [ fixedpos[e] for e in tracks.dependson[k] ]
+                #     ps = [ tracks.grouppaths[g] for g in dogrs ]
+                #     grps = mincommonindex(ps...)
+                #     grp = (length(grps)==0) ? f : grps[end]
+                # end
+
+                grp = gr  # let's try this simplification
+
                 fixedpos[k] = grp
                 pop!(floatingpos, k)
                 anymoved = true
@@ -60,10 +67,10 @@ function VGElement{:final}(;nargs...)
         haskey(gtyped[gr], typ) || ( gtyped[gr][typ] = [] )
         push!(gtyped[gr][typ], e)
     end
-    println(gtyped)
+    # println(gtyped)
 
     # now insert defs
-    trie = builddefs(f, gtyped)
+    trie = rebuildwithdefs(f, gtyped)
     for (k, v) in trie.children
         f.trie.children[k] = v
     end
@@ -72,14 +79,18 @@ function VGElement{:final}(;nargs...)
 end
 
 # recursive insertion, without tracking
-function builddefs(group::Group, gtyped)
+function rebuildwithdefs(group::VGElement, gtyped)
     # println(group)
-    trie = VGTrie{LeafType}(Symbol)
+    # trie = VGTrie{LeafType}(Symbol)
+    trie = group.trie
     for (typ, es) in gtyped[group]
         # println("  - $typ  : $es ($(length(es)) elements)")
         for (i, d) in enumerate(es)
+            # in definitions vectores, remove references, to leave room for the def trie
+            haskey(trie, [typ, i]) && (subtrie(trie, [typ, i]).is_key = false )
+
             # println("****  $d   $(typeof(d))  $(kindof(d))")
-            t2 = (kindof(d) == :Group) ? builddefs(d, gtyped) : d.trie
+            t2 = (kindof(d) == :Group) ? rebuildwithdefs(d, gtyped) : d.trie
             for k in keys(t2)
                 trie[vcat([typ, i], k)] = t2[k]
             end

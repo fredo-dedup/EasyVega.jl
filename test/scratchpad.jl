@@ -233,7 +233,16 @@ ttt = VG(width=800, height=300, padding=20, background= "#ccb",
     axes = [ tscale(orient="bottom"), yscale(orient="left"), y2scale(orient="right") ],
     marks= [ lmark, lmark2 ])
 
+LineMark(from_data= histdat,
+    encode_enter=(x=tscale(histdat.DATE), y=yscale(histdat.TEMP), stroke_value="#d666")
+).trie
 
+LineMark(
+    encode_enter=(x=tscale(histdat.DATE), y=yscale(histdat.TEMP), stroke_value="#d666")
+).trie
+
+
+findfirst( (println(p[1], p[2]); false) for p in pairs(lmark.tracking.mentions) )
 
 #################
 
@@ -258,6 +267,30 @@ yscale = LinearScale(range="height",   domain=dat.y, nice=true, zero=true)
 cscale = OrdinalScale(range="category", domain=dat.c)
 
 series = Facet(groupby=dat.c)
+series.trie
+series.tracking
+
+lmark = LineMark(
+    encode_enter_x = xscale(series.x),
+    encode_enter_y = yscale(series.y),
+    encode_enter_stroke = cscale(series.c)
+)
+lmark.trie
+lmark.tracking
+
+gm = GroupMark(marks=[lmark])
+gm.trie
+gm.tracking
+
+ttt = VG(width=500, height=200, padding=20, background= "#ddb",
+    axes = [ xscale(orient="bottom"), yscale(orient="left") ],
+    marks= [ gm ] )
+ttt.trie
+EasyVega.subtrie(ttt.trie, [:marks,1])
+
+
+
+
 
 ttt = VG(width=500, height=200, padding=20, background= "#ddb", #:white,
     axes = [ xscale(orient="bottom"), yscale(orient="left") ],

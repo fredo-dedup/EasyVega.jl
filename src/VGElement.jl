@@ -14,17 +14,18 @@ end
 
 # naming algo, to ensure unique and short names
 counter = 1
-refs = Dict{VGElement, String}()
+refs = Dict{UInt, String}()
 
 function idof(s::VGElement{T}) where T
     global counter, refs
 
-    haskey(refs, s) && return refs[s]
+    oid = objectid(s)
+    haskey(refs, oid) && return refs[oid]
 
     n = counter
     counter += 1
     prefix = String(T)[1:2]
-    refs[s] = "$prefix-$n"
+    refs[oid] = "$prefix-$n"
 end
 
 # idof(s::VGElement{T}) where T = "$(T)_$(objectid(s))"
@@ -45,7 +46,6 @@ const LeafType = Union{
 # general constructor
 function VGElement{T}(;nargs...) where T 
     e = VGElement{T}( VGTrie{LeafType}(Symbol), Tracking() )
-    e.tracking.dependson[e] = Set() 
     for (k,v) in nargs
         sk = Symbol.(split(String(k), "_")) # split by symbol separated by "_"
         insert!(e, sk, v)
