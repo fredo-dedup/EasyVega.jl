@@ -5,7 +5,34 @@ tb = DataFrame(x=randn(N), y=randn(N), a=rand("ABC", N))
 
 using EasyVega
 
-EasyVega.JSON.json(Dict(:d => "2023-02-19T14:00:00"))
+
+
+18.8 + 
+50 +
+43.38 +
+
+8 +
+9 +
+8.95 +
+
+9 +
+8.94 +
+20 + 
+
+7.7 +
+8 + 
+50 +
+
+11.30 +
+8 +
+
+5.50 +
+7 +
+9 +
+8.9 +
+7.5
+
+
 
 # idea : evaluate variables only at rendering 
 
@@ -16,7 +43,7 @@ xscale = LinearScale(range="width",     domain=dat2.x)
 yscale = LinearScale(range="height",    domain=dat2.y, nice=true, zero=true)
 cscale = OrdinalScale(range="category", domain=dat2.a)
 
-smark = SymbolMark(shape="circle", from_data= dat2,
+smark = SymbolMark(shape="circle", 
     encode_enter=(xc=xscale(dat2.x), yc=yscale(dat2.y), 
     fill=cscale(dat2.a), fillOpacity_value=0.2, 
     stroke=cscale(dat2.a), strokeOpacity_value=1,
@@ -26,6 +53,23 @@ smark = SymbolMark(shape="circle", from_data= dat2,
 ttt = VG(width=400, height=300, padding=20, background= "#ccc",
     axes = [ xscale(orient="bottom"), yscale(orient="left") ],
     marks= [ smark ])
+
+lmark = LineMark(encode_enter=(
+    x=xscale(dat2.x), 
+    y=yscale(dat2.y), 
+))
+
+ttt = VG(width=400, height=300, padding=20, background= "#ccc",
+    axes = [ xscale(orient="bottom"), yscale(orient="left") ],
+    marks= [ smark, lmark ]
+)
+
+ttt = VG(width=400, height=300, padding=20, background= "#ccc",
+    # axes = [ xscale(orient="bottom"), yscale(orient="left") ],
+    layout= (columns = 2, padding=20),
+    marks= [ GroupMark(marks=[smark]), GroupMark(marks=[lmark]) ]
+)
+
 
 ###########
 
@@ -194,7 +238,7 @@ String(take!(io))
 
 
 ###############
-
+using CSV
 fn = "/home/fred/logs/temtop/compil 02-18 -> 03-03.csv"
 histo = CSV.File(fn, dateformat="yyyy-mm-dd HH:MM:SS", normalizenames=true) |> DataFrame
 
@@ -204,12 +248,16 @@ tscale = TimeScale(range="width",   domain=histdat.DATE)
 yscale = LinearScale(range="height",  domain=histdat.PM2_5, nice=true, zero=true)
 y2scale = LinearScale(range="height",  domain=histdat.CO2, nice=true, zero=true)
 
-lmark = LineMark(from_data= histdat,
-    encode_enter=(x=tscale(histdat.DATE), y=yscale(histdat.PM2_5), stroke_value="#d666")
+lmark = LineMark(encode_enter=(
+    x=tscale(histdat.DATE), 
+    y=yscale(histdat.PM2_5), 
+    stroke_value="#d666")
 )
 
-lmark2 = LineMark(from_data= histdat,
-    encode_enter=(x=tscale(histdat.DATE), y=y2scale(histdat.CO2), stroke_value="#66d")
+lmark2 = LineMark(encode_enter=(
+    x=tscale(histdat.DATE), 
+    y=y2scale(histdat.CO2), 
+    stroke_value="#66d")
 )
 
 
@@ -233,16 +281,6 @@ ttt = VG(width=800, height=300, padding=20, background= "#ccb",
     axes = [ tscale(orient="bottom"), yscale(orient="left"), y2scale(orient="right") ],
     marks= [ lmark, lmark2 ])
 
-LineMark(from_data= histdat,
-    encode_enter=(x=tscale(histdat.DATE), y=yscale(histdat.TEMP), stroke_value="#d666")
-).trie
-
-LineMark(
-    encode_enter=(x=tscale(histdat.DATE), y=yscale(histdat.TEMP), stroke_value="#d666")
-).trie
-
-
-findfirst( (println(p[1], p[2]); false) for p in pairs(lmark.tracking.mentions) )
 
 #################
 
@@ -259,7 +297,6 @@ dat = Data(
         (x= 8, y= 68, c=0), (x= 8, y= 16, c=1),
         (x= 9, y= 49, c=0), (x= 9, y= 25, c=1)
       ],
-    # transform=[(type="stack",groupby=[:x], sort_field=:c, field=:y)]
 )
 
 xscale = PointScale(range="width",    domain=dat.x)
@@ -267,57 +304,124 @@ yscale = LinearScale(range="height",   domain=dat.y, nice=true, zero=true)
 cscale = OrdinalScale(range="category", domain=dat.c)
 
 series = Facet(groupby=dat.c)
-series.trie
-series.tracking
 
 lmark = LineMark(
     encode_enter_x = xscale(series.x),
     encode_enter_y = yscale(series.y),
     encode_enter_stroke = cscale(series.c)
 )
-lmark.trie
-lmark.tracking
 
 gm = GroupMark(marks=[lmark])
-gm.trie
-gm.tracking
 
 ttt = VG(width=500, height=200, padding=20, background= "#ddb",
     axes = [ xscale(orient="bottom"), yscale(orient="left") ],
-    marks= [ gm ] )
-ttt.trie
-EasyVega.subtrie(ttt.trie, [:marks,1])
-
-
-
-
-
-ttt = VG(width=500, height=200, padding=20, background= "#ddb", #:white,
-    axes = [ xscale(orient="bottom"), yscale(orient="left") ],
-    signals = [
-        (name="strokew", value=2,
-         bind=(input=:range, min=1, max=30, step=1))
-    ],
-    marks= [
-        (
-            type= :group,
-            from_facet= (name="series", data=dat, groupby=:c),
-            marks= [
-                (
-                    type="line", from_data="series",
-                    encode_enter_x = xscale(dat.x),
-                    encode_enter_y = yscale(dat.y),
-                    encode_enter_stroke = cscale(dat.c),
-                    encode_update_strokeWidth = (signal="strokew",),
-                ),
-                (
-                    type="point", from_data="series",
-                    encode_enter_x = xscale(dat.x),
-                    encode_enter_y = yscale(dat.y),
-                )
-            ]
-        ) ]
+    marks= [ gm ] 
 )
+
+#################
+
+dat = Data(
+    values = [
+        (x= 0, y= 28, c=0), (x= 0, y= 20, c=1),
+        (x= 1, y= 43, c=0), (x= 1, y= 35, c=1),
+        (x= 2, y= 81, c=0), (x= 2, y= 10, c=1),
+        (x= 3, y= 19, c=0), (x= 3, y= 15, c=1),
+        (x= 4, y= 52, c=0), (x= 4, y= 48, c=1),
+        (x= 5, y= 24, c=0), (x= 5, y= 28, c=1),
+        (x= 6, y= 87, c=0), (x= 6, y= 66, c=1),
+        (x= 7, y= 17, c=0), (x= 7, y= 27, c=1),
+        (x= 8, y= 68, c=0), (x= 8, y= 16, c=1),
+        (x= 9, y= 49, c=0), (x= 9, y= 25, c=1)
+        ],
+)
+
+xscale = BandScale(range="width", domain=dat.x)
+yscale = LinearScale(range="height",   domain=dat.y, nice=true, zero=true)
+cscale = OrdinalScale(range="category", domain=dat.c)
+
+series = Facet(groupby=dat.x)
+wsig = Signal(update="[0,0.9*bandwidth('$xscale')]")
+ixscale = BandScale(range_signal=wsig,  
+    domain = series.c, paddingOuter=0.1)
+
+bars = RectMark(encode_enter=(
+    x = ixscale(series.c),
+    width = ixscale(band=1.),
+    y = yscale(value=0),
+    y2 = yscale(series.y),
+    fill = cscale(series.c)
+))
+
+gm = GroupMark(
+    encode_enter_x = xscale(series.x),
+    # axes= [ ixscale(orient="top") ],
+    marks=[bars]
+)
+
+ttt = VG(width=500, height=200, padding=20, background= "#fed",
+    axes = [ xscale(orient="bottom"), yscale(orient="left") ],
+    marks= [ gm ] 
+)
+
+
+gm1 = GroupMark(
+    axes = [ xscale(orient="bottom"), yscale(orient="left") ],
+    encode_enter_x = xscale(series.x),
+    marks=[bars]
+)
+
+gm2 = GroupMark(
+    axes = [ xscale(orient="bottom"), yscale(orient="left") ],
+    encode_enter_x = xscale(series.x),
+    marks=[bars]
+)
+
+
+ttt = VG(width=500, height=200, padding=20, background= "#fed",
+    # layout=(columns=1,),
+    marks= [ gm1, gm2 ] 
+)
+
+
+
+################
+
+using InteractiveUtils
+io = IOBuffer()
+EasyVega.toJSON(io,ttt.trie)
+clipboard(String(take!(io)))
+
+##############  alternative syntax (groups/root are predeclared, and objects specifically placed)
+
+plt = VG(width=500, height=200, padding=20, background= "#fed")
+
+xscale = plt.BandScale(range="width", domain=dat.x)
+yscale = plt.LinearScale(range="height",   domain=dat.y, nice=true, zero=true)
+cscale = plt.OrdinalScale(range="category", domain=dat.c)
+
+gm = plt.GroupMark( encode_enter_x = xscale(series.x) )
+
+series = gm.Facet(groupby=dat.x)
+ixscale = gm.BandScale(range_signal="[0,width / 10]", domain = series.c, paddingOuter=0.1)
+
+bars = gm.RectMark(encode_enter=(
+    x = ixscale(series.c),
+    width = ixscale(band=1.),
+    y = yscale(value=0),
+    y2 = yscale(series.y),
+    fill = cscale(series.c)
+))
+
+render(plt)
+
+ttt = VG(width=500, height=200, padding=20, background= "#fed",
+    axes = [ xscale(orient="bottom"), yscale(orient="left") ],
+    marks= [ gm ] )
+
+
+
+################
+
 
 io = IOBuffer()
 EasyVega.toJSON(io,ttt.trie)

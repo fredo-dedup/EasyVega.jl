@@ -60,7 +60,7 @@ function GroupMark(;nargs...)
             fc = first(fcs)
             insert!(e, [:from, :facet, :name], idof(fc))  # add facet name
             for k in keys(fc.trie)
-                # correct some misplaced fields  (TODO: improve this)
+                # correct some misplaced fields in facets (TODO: improve this)
                 if k == [:groupby, :data]
                     insert!(e, [:from, :facet, :data], fc.trie[k])
                 elseif k == [:groupby, :field]    
@@ -72,6 +72,12 @@ function GroupMark(;nargs...)
 
             # remove facet from mentions
             pop!(tracks.mentions, fc)
+            # signal it is now defined
+            tracks.fixeddefs[fc] = e
+            # # in dependencies, replace facets by associated group
+            # for el in keys(tracks.dependson)
+            #     replace!(tracks.dependson[el], fc => e)
+            # end
         else
             cd = findfirst( (kindof(p[1]) == :Data) && (p[2] === nothing) for p in pairs(tracks.mentions) )
             (cd === nothing) || insert!(e, [:from, :data], idof(cd))

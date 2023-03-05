@@ -46,6 +46,7 @@ const LeafType = Union{
 # general constructor
 function VGElement{T}(;nargs...) where T 
     e = VGElement{T}( VGTrie{LeafType}(Symbol), Tracking() )
+    e.tracking.dependson[e] = Set()
     for (k,v) in nargs
         sk = Symbol.(split(String(k), "_")) # split by symbol separated by "_"
         insert!(e, sk, v)
@@ -191,7 +192,8 @@ function updateTracking!(e::VGElement, index::Vector, item::VGElement)
     # second, add to the list of what e depends on : item and what item depends on
     haskey(tracks.dependson, e) || ( tracks.dependson[e] = Set() )
     isnamed(item) && push!(tracks.dependson[e], item)
-    union!(tracks.dependson[e], ntracks.dependson[item])
+    # union!(tracks.dependson[e], ntracks.dependson[item])
+    union!(tracks.dependson[e], keys(ntracks.mentions))
 
     #### update defs
     for (el, pos) in ntracks.fixeddefs

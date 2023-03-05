@@ -49,11 +49,14 @@ function VGElement{:final}(;nargs...)
                 fixedpos[k] = grp
                 pop!(floatingpos, k)
                 anymoved = true
-                # println("(1) $k  ->  $grp")
+                println("(1) $k  ->  $grp")
             end
+
         end
+
     end
     
+    println(floatingpos)
     anymoved || error("circular reference somewhere")
 
     #### now we insert the definitions at the indicated place
@@ -64,8 +67,10 @@ function VGElement{:final}(;nargs...)
     for (e, gr) in fixedpos
         haskey(gtyped, gr) || ( gtyped[gr] = Dict{Symbol, Vector}() )
         typ = DefName[ kindof(e) ]
-        haskey(gtyped[gr], typ) || ( gtyped[gr][typ] = [] )
-        push!(gtyped[gr][typ], e)
+        if typ !== nothing  # skip facets
+            haskey(gtyped[gr], typ) || ( gtyped[gr][typ] = [] )
+            push!(gtyped[gr][typ], e)
+        end
     end
     # println(gtyped)
 
@@ -86,7 +91,7 @@ function rebuildwithdefs(group::VGElement, gtyped)
     for (typ, es) in gtyped[group]
         # println("  - $typ  : $es ($(length(es)) elements)")
         for (i, d) in enumerate(es)
-            # in definitions vectores, remove references, to leave room for the def trie
+            # in definitions vectors, remove references, to leave room for the def trie
             haskey(trie, [typ, i]) && (subtrie(trie, [typ, i]).is_key = false )
 
             # println("****  $d   $(typeof(d))  $(kindof(d))")
