@@ -2,69 +2,73 @@
 # final Element, collects named VGElements (Signal, Data, Scale, ..) and
 # places their definitions at the right place in the trie
 
+export VG
+
 const VG = VGElement{:final}
 
 function VGElement{:final}(;nargs...)
     f = VGElement{:prefinal}(;nargs...) 
-    wraplevel!(f)
+    deps = f.tracking.depgraph
 
-    tracks = f.tracking
-    # println(tracks)
-
-    # maintain two dicts : positions fixed, and floating
-    # populate fixed with floating until floating is empty
-    fixedpos = Dict{VGElement, Any}()
-    floatingpos = Dict{VGElement, Any}()
+    # We iteratively update 'positions' which is a vector giving a
+    # candidate position for the definition of each named element.
+    # Positions are initialized with their path in the dependency graph between 
+    # the root element VG and the element.
+    # Positions are updated (by moving up toward the root) to ensure they are at or 
+    # before the definition of the elements depending on it (except if its  
+    #   position is fixed)
+    # We stop when necessary updates are exhausted (i.e the positions are 
+    #  consistent) 
     
-    # populate floating pos group with all mentions
-    merge!(floatingpos, tracks.mentions)
+    #### initialize
+    isfixed = Set( i for i in vertices(deps) if deps[label_for(deps,i)] )
+    # println(isfixed)
 
-    # fixed defs can be transfered to fixed group
-    merge!(fixedpos, tracks.fixeddefs)
-    filter!(p -> !haskey(tracks.fixeddefs,p[1]), floatingpos)
-
-    # iteratively transfer elements from floatingpos to fixedpos
-    # (floating can be transfered when all elements in depends on are fixed)
+    paths = dijkstra_shortest_paths(deps, code_for(deps, f))
+    positions = enumerate_paths(paths)
+    # println(positions)
+    
     anymoved = true
-    while (length(floatingpos) > 0) && anymoved
+    children = [ inneighbors(deps, i) for i in 1:nv(deps) ]
+    while anymoved
         anymoved = false
-        for (k,gr) in floatingpos
-            # test if all the elements it depends on have a fixed position
-            if all( haskey(fixedpos, p) for p in tracks.dependson[k] ) 
-                # if yes, we can fix it to the lowest common group of dependson
-                
-                
-                # FIXME : constraint is the other way around !
-                # if length(tracks.dependson[k]) == 0
-                #     grp = gr
-                # else 
-                #     dogrs = [ fixedpos[e] for e in tracks.dependson[k] ]
-                #     ps = [ tracks.grouppaths[g] for g in dogrs ]
-                #     grps = mincommonindex(ps...)
-                #     grp = (length(grps)==0) ? f : grps[end]
-                # end
-
-                grp = gr  # let's try this simplification
-
-                fixedpos[k] = grp
-                pop!(floatingpos, k)
-                anymoved = true
-                println("(1) $k  ->  $grp")
+        for (i, path) in enumerate(positions)
+            if (length(children) > 0) && (length(path) > 0) && !(i in isfixed)
+                minpath = mincommonindex(positions[children[i]]...)
+                if minpath != path
+                    anymoved = true
+                    positions[i] = minpath
+                    # println("$i : $path => $minpath")
+                end
             end
-
         end
-
     end
-    
-    println(floatingpos)
-    anymoved || error("circular reference somewhere")
+
+    # find the closest group to the candidate path to put the definition
+    defpos = Dict{VGElement, VGElement}()
+    groups = Set( i for i in 1:nv(deps) if kindof(label_for(deps,i)) in [:prefinal, :Group] )
+    # println(groups)
+    for (i,path) in enumerate(positions)
+        (i == code_for(deps, f)) && continue # skip root
+        if length(path) == 0
+            gr = f
+        else
+            if i in groups # group defs go 1 level up
+                idx = findlast( ip in groups for ip in path[1:end-1] )
+            else
+                idx = findlast( ip in groups for ip in path )
+            end
+            gr = label_for(deps, path[idx])
+        end
+        el = label_for(deps, i)
+        defpos[el] = gr 
+    end
+    # println(defpos)
 
     #### now we insert the definitions at the indicated place
-    # println(fixedpos)
-
     # arrange by destination group and element type
     gtyped = Dict{VGElement, Any}()
-    for (e, gr) in fixedpos
+    for (e, gr) in defpos
         haskey(gtyped, gr) || ( gtyped[gr] = Dict{Symbol, Vector}() )
         typ = DefName[ kindof(e) ]
         if typ !== nothing  # skip facets
@@ -72,7 +76,7 @@ function VGElement{:final}(;nargs...)
             push!(gtyped[gr][typ], e)
         end
     end
-    # println(gtyped)
+    # FIXME : sort within vectors (data, mark) in case they depend on each other
 
     # now insert defs
     trie = rebuildwithdefs(f, gtyped)
@@ -86,15 +90,12 @@ end
 # recursive insertion, without tracking
 function rebuildwithdefs(group::VGElement, gtyped)
     # println(group)
-    # trie = VGTrie{LeafType}(Symbol)
     trie = group.trie
     for (typ, es) in gtyped[group]
-        # println("  - $typ  : $es ($(length(es)) elements)")
         for (i, d) in enumerate(es)
             # in definitions vectors, remove references, to leave room for the def trie
             haskey(trie, [typ, i]) && (subtrie(trie, [typ, i]).is_key = false )
 
-            # println("****  $d   $(typeof(d))  $(kindof(d))")
             t2 = (kindof(d) == :Group) ? rebuildwithdefs(d, gtyped) : d.trie
             for k in keys(t2)
                 trie[vcat([typ, i], k)] = t2[k]

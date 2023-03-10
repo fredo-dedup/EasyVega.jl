@@ -5,31 +5,24 @@
 # - they have an id, used for reference in final VG
 # - they hold their dependencies to other elements in the tracking field
 
-export VG
+elements_counter::Int = 1
 
 struct VGElement{T}
     trie::VGTrie
     tracking
+    id::Int
+    function VGElement{T}(trie, tracking) where {T}
+        global elements_counter
+        elements_counter += 1
+        new(trie, tracking, elements_counter)
+    end
 end
-
-# naming algo, to ensure unique and short names
-counter = 1
-refs = Dict{UInt, String}()
 
 function idof(s::VGElement{T}) where T
-    global counter, refs
-
-    oid = objectid(s)
-    haskey(refs, oid) && return refs[oid]
-
-    n = counter
-    counter += 1
     prefix = String(T)[1:2]
-    refs[oid] = "$prefix-$n"
+    n = s.id
+    "$prefix$n"
 end
-
-# idof(s::VGElement{T}) where T = "$(T)_$(objectid(s))"
-
 
 kindof(::VGElement{T}) where T = T
 
@@ -46,7 +39,6 @@ const LeafType = Union{
 # general constructor
 function VGElement{T}(;nargs...) where T 
     e = VGElement{T}( VGTrie{LeafType}(Symbol), Tracking() )
-    e.tracking.dependson[e] = Set()
     for (k,v) in nargs
         sk = Symbol.(split(String(k), "_")) # split by symbol separated by "_"
         insert!(e, sk, v)
@@ -126,82 +118,58 @@ isnamed(e::VGElement{T}) where {T} = T in keys(DefName)
 #######   reference and group tracking  #########################################
 
 struct Tracking
-    mentions::Dict{VGElement, Any}  # named elements mentionned and their lowest common group
-    fixeddefs::Dict{VGElement, Any} # named elements defined in a group (not just mentionned)
-    dependson::Dict{VGElement, Set}  # for each element the set of other elements they depend on
-    grouppaths::Dict{VGElement, Vector} # path leading to each (i.e. group ancestors)
-    children::Dict{VGElement, Set}  
+    depgraph::MetaGraph # dependency graph between elements
+    # groupgraph::MetaGraph
 end
 
 Tracking() = Tracking(
-    Dict{VGElement, Any}(),
-    Dict{VGElement, Any}(),
-    Dict{VGElement, Set}(),
-    Dict{VGElement, Vector}(),
-    Dict{VGElement, Set}()
+    MetaGraph(DiGraph(), Label=VGElement, VertexData=Bool),
+    # MetaGraph(DiGraph(), Label=VGElement, VertexData=Set)
 )
 
 function Base.show(io::IO, t::Tracking)
-    println(io, "mentions :")
-    for (k,v) in t.mentions
-        println(io, "  - $k : $v")
-    end
-    println(io, "fixeddefs :")
-    for (k,v) in t.fixeddefs
-        println(io, "  - $k : $v")
-    end
-    println(io, "dependson :")
-    for (k,v) in t.dependson
-        println(io, "  - $k : $(collect(v))")
-    end
-    println(io, "grouppaths :")
-    for (k,v) in t.grouppaths
-        println(io, "  - $k : $v")
-    end
-    println(io, "children :")
-    for (k,v) in t.children
-        println(io, "  - $k : $(collect(v))")
-    end
+    deps = t.depgraph
+    labs = [ "$(label_for(deps, i))" for i in 1:nv(deps) ]
+    println(io, "nodes :")
+    println(io, labs)
+
+    println(io, "dependencies :")
+    println(io, [ "$(labs[e.src]) -> $(labs[e.dst])" for e in edges(t.depgraph)])
 end
 
-function updateTracking!(e::VGElement, index::Vector, item::VGElement)
-    tracks = e.tracking
-    ntracks = item.tracking
 
-    merge!(tracks.grouppaths, ntracks.grouppaths)
-    merge!(tracks.children, ntracks.children)
-    
-    #### update mentions
-    for (el, gr) in ntracks.mentions
-        if haskey(tracks.mentions, el) # lowest common group is current group
-            tracks.mentions[el] = nothing
+function addDependency(g::MetaGraph, a::VGElement, b::VGElement)
+    haskey(g, a) || add_vertex!(g, a, false)
+    haskey(g, b) || add_vertex!(g, b, false)
+    add_edge!(g, a, b, nothing)
+end
+
+
+function updateTracking!(e::VGElement, index::Vector, item::VGElement)
+    depg = e.tracking.depgraph
+    ndepg = item.tracking.depgraph
+
+    #### update dependency graph with depgraph of item
+    for edg in edges(ndepg)
+        a = label_for(ndepg, edg.src)
+        b = label_for(ndepg, edg.dst)
+        if (a == item) && !isnamed(item) # link to e directly
+            addDependency(depg, e, b)
         else
-            tracks.mentions[el] = gr
+            addDependency(depg, a, b)
         end
     end
-    # add the item itself to mentions, if named element
-    if isnamed(item)
-        tracks.mentions[item] = nothing
-    end
+    # add the item itself to dependencies of e
+    isnamed(item) && addDependency(depg, e, item)
 
-    #### update depends-on list (for each mentionned element, list all elements they depend on) 
-    # first copy dependency info from item
-    for (el, els) in ntracks.dependson
-        isnamed(el) && (tracks.dependson[el] = els)
+    #### update fixed flag
+    for iel in vertices(ndepg)
+        el = label_for(ndepg, iel)
+        haskey(depg, el) && (depg[el] = ndepg[el])
     end
-    # second, add to the list of what e depends on : item and what item depends on
-    haskey(tracks.dependson, e) || ( tracks.dependson[e] = Set() )
-    isnamed(item) && push!(tracks.dependson[e], item)
-    # union!(tracks.dependson[e], ntracks.dependson[item])
-    union!(tracks.dependson[e], keys(ntracks.mentions))
-
-    #### update defs
-    for (el, pos) in ntracks.fixeddefs
-        tracks.fixeddefs[el] = pos
-    end
-    # add this element if we are in a definition
+    # mark this item as fixed if we are in a definition
     if isdef(e, index) && isnamed(item)
-        tracks.fixeddefs[item] = nothing
+        depg[item] = true
     end
 end
 

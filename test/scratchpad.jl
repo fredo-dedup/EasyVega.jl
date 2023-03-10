@@ -6,36 +6,6 @@ tb = DataFrame(x=randn(N), y=randn(N), a=rand("ABC", N))
 using EasyVega
 
 
-
-18.8 + 
-50 +
-43.38 +
-
-8 +
-9 +
-8.95 +
-
-9 +
-8.94 +
-20 + 
-
-7.7 +
-8 + 
-50 +
-
-11.30 +
-8 +
-
-5.50 +
-7 +
-9 +
-8.9 +
-7.5
-
-
-
-# idea : evaluate variables only at rendering 
-
 ###########
 
 dat2 = Data(values=tb)
@@ -161,6 +131,116 @@ ttt = VG(width=400, height=300, padding=20, background= "#ddb", #:white,
     axes = [ xscale(orient="bottom"), yscale(orient="left") ],
     marks= [ rmark ] )
 
+################
+
+df = DataFrame(
+    x=rand([1,2,3,4],200),
+    y=rand([1,2,3,4],200),
+    c=rand([:A,:B,:C],200),
+)
+
+dat = Data(values = df)
+
+xscale = BandScale(range="width",  domain=dat.x, domain_sort=true)
+yscale = BandScale(range="height", domain=dat.y, domain_sort=true)
+cscale = OrdinalScale(range="category", domain=dat.c)
+
+fc = Facet(groupby= [:x, :y], data=dat)
+
+minidat = Data(source=fc,
+    transform=[
+        (type="aggregate", groupby=[:c], ops=["count"], as=[:count], fields=[:x])
+        (type="pie", field=:count)
+    ]
+)
+
+rmark = ArcMark(from_data=minidat,  # TODO: needs to be specified, otherwise takes facet, improve
+    encode_enter=(
+        x_signal= "bandwidth('$xscale')/2",
+        y_signal= "bandwidth('$xscale')/2",
+        startAngle= minidat.startAngle,
+        endAngle= minidat.endAngle,
+        innerRadius_value= 15,
+        outerRadius_value= 40,
+        stroke_value= :black, 
+        fill = cscale(minidat.c),
+))
+
+gm = GroupMark(
+    encode_enter_x = xscale(fc.x),
+    encode_enter_y = yscale(fc.y),
+    marks=[rmark]
+)
+
+ttt = VG(width=400, height=400, padding=20, background= "#fed", 
+    axes = [ 
+        xscale(orient="bottom", grid=true, bandPosition=1, title="x"), 
+        yscale(orient="left", grid=true, bandPosition=1, title="y") ],
+    marks= [ gm ],
+    legends=[ (fill = cscale, title="type", titleFontSize=15) ] 
+)
+
+
+
+    io = IOBuffer()
+    EasyVega.toJSON(io,ttt.trie)
+    clipboard(String(take!(io)))
+
+
+#################################################"
+
+tb = DataFrame(t=0:0.1:10)
+tb.x = sin.(tb.t) ./ (1 .+ tb.t/10)
+tb.y = cos.(tb.t) ./ (1 .+ tb.t/10)
+
+dat = Data(values=tb)
+xsc = LinearScale(range="width", domain=dat.x)
+ysc = LinearScale(range="height", domain=dat.y)
+cscale = OrdinalScale(range="category", domain=dat.c)
+
+lm = LineMark(encode_enter=(x=xsc(dat.x), y=ysc(dat.y)))
+
+dat2 = Data(source=dat,
+    transform=[
+        (type="identifier", as="id"),
+        (type="formula", expr="datum.id + 1", as="id2"),
+    ]
+)
+
+dat3 = Data(source=dat2,
+    transform=[
+        (type="lookup", from=dat2, key="id2", fields=["id"], values=["x","y"], as=["x2","y2"]),
+        (type="formula", expr="datum.x2 - datum.x", as="dx"),
+        (type="formula", expr="datum.y2 - datum.y", as="dy"),
+        (type="formula", expr="0.1/sqrt(datum.dx*datum.dx+datum.dy*datum.dy)", as="factor")
+        # (type="filter", expr="(id % 1) == 0"),
+    ]
+)
+
+
+rm = RuleMark(from_data=dat3,
+    encode_enter=(
+        x=xsc(field=:x), 
+        y=ysc(field=:y),
+        x2=xsc(signal="datum.x+datum.dy*datum.factor"), 
+        y2=ysc(signal="datum.y-datum.dx*datum.factor"),
+    stroke_value=:green
+    # x2=xsc(dat.x, offset=10), y2=ysc(dat.y, offset=10),
+))
+
+ttt = VG(width=400, height=400, padding=20, background= "#fed", 
+    axes = [ 
+        xsc(orient="bottom", grid=true, title="x"), 
+        ysc(orient="left", grid=true, title="y") 
+    ],
+    marks= [ lm, rm],
+)
+
+io = IOBuffer()
+EasyVega.toJSON(io,ttt.trie)
+clipboard(String(take!(io)))
+
+# FIXME: order is important for data !!!
 
 ###########
 using CSV

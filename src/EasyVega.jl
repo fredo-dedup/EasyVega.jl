@@ -1,12 +1,9 @@
 
 module EasyVega
 
-using JSON
-using Dates
-
+using JSON, Dates
+using Graphs, MetaGraphsNext
 import Tables
-
-
 
 
 include("VGTrie.jl")
@@ -19,7 +16,5 @@ include("signals.jl")
 include("VG.jl")
 
 include("io.jl")
-
-
 
 end

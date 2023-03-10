@@ -27,14 +27,17 @@ function VGElement{:Mark}(;nargs...)
 
     # if no "from" is specified, create it 
     if ! haskey(e.trie, [:from, :data])
-        # look for facets first
-        cd = findfirst( (kindof(p[1]) == :Facet) && (p[2] === nothing) for p in pairs(e.tracking.mentions) )
-        # and data next
-        if cd === nothing
-            cd = findfirst( (kindof(p[1]) == :Data) && (p[2] === nothing) for p in pairs(e.tracking.mentions) )
-        end
+        # look for facets or data 
+        # TODO: improve search to only take data/facet that are used for encode (and skip used those in scales for example)
+        deps = e.tracking.depgraph
+        dorf = [ label_for(deps,i) for i in outneighbors(deps, code_for(deps, e)) ]
+        filter!(e -> kindof(e) in [:Facet, :Data], dorf)
 
-        (cd === nothing) || insert!(e, [:from, :data], idof(cd))
+        if length(dorf) > 1
+            error("multiple data/facets used in this mark : $dorf")
+        elseif length(dorf) == 1
+            insert!(e, [:from, :data], idof(dorf[1]))
+        end
     end
     e
 end
@@ -45,77 +48,48 @@ const Group = VGElement{:Group}
 function GroupMark(;nargs...)
     e = Group(type=:group; nargs...)
     
-    #  compared to tracking of common elements we need : 
-    tracks = e.tracking
-    
     # handle the "from" field
     #  - if set by user => use that, do not touch
-    #  - if 1 facet present, use it
-    #  - if several facets present, throw error
+    #  - if facets present, use first, throw warning if several
     #  - if no facet, use data
     if subtrie(e.trie, [:from]) === nothing
-        fcs = filter( f -> kindof(f) == :Facet, keys(tracks.mentions) )
-        (length(fcs) > 1) && error("multiple facets used in this group") 
-        if length(fcs) == 1
-            fc = first(fcs)
-            insert!(e, [:from, :facet, :name], idof(fc))  # add facet name
-            for k in keys(fc.trie)
-                # correct some misplaced fields in facets (TODO: improve this)
-                if k == [:groupby, :data]
-                    insert!(e, [:from, :facet, :data], fc.trie[k])
-                elseif k == [:groupby, :field]    
-                    insert!(e, [:from, :facet, :groupby], fc.trie[k])
-                else
-                    insert!(e, vcat([:from, :facet], k), fc.trie[k])
-                end
-            end
+        deps = e.tracking.depgraph
+        dorf = [ label_for(deps,i) for i in dfs_parents(deps, code_for(deps, e)) ]
+        filter!(e -> kindof(e) in [:Facet, :Data], dorf)
 
-            # remove facet from mentions
-            pop!(tracks.mentions, fc)
-            # signal it is now defined
-            tracks.fixeddefs[fc] = e
-            # # in dependencies, replace facets by associated group
-            # for el in keys(tracks.dependson)
-            #     replace!(tracks.dependson[el], fc => e)
-            # end
-        else
-            cd = findfirst( (kindof(p[1]) == :Data) && (p[2] === nothing) for p in pairs(tracks.mentions) )
-            (cd === nothing) || insert!(e, [:from, :data], idof(cd))
+        if length(dorf) > 0
+            # use facets over data in priority
+            is = findfirst( kindof.(dorf) .== :Facet )
+            (is === nothing) && ( is = findfirst( kindof.(dorf) .== :Data ) )
+
+            cfd = label_for(deps, is)
+            (length(dorf)>1) && warning("multiple data/facets in this group, using $cfd, explicitly set it if not correct")
+
+            if kindof(cfd) == :Facet
+                # insert definition of this facet in the 'from' field
+                insert!(e, [:from, :facet, :name], idof(cfd))  # add facet name
+                for k in keys(cfd.trie)
+                    # correct some misplaced fields in facets (TODO: improve this)
+                    if k == [:groupby, :data]
+                        insert!(e, [:from, :facet, :data], cfd.trie[k])
+                    elseif k == [:groupby, :field]    
+                        insert!(e, [:from, :facet, :groupby], cfd.trie[k])
+                    else
+                        insert!(e, vcat([:from, :facet], k), cfd.trie[k])
+                    end
+                end
+        
+                # add new link between this group and this facet 
+                addDependency(deps, e, cfd)
+                # mark this definition as fixed
+                deps[cfd] = true
+            else  # Data, insert ref only
+                insert!(e, [:from, :data], idof(cfd))
+                addDependency(deps, e, cfd)
+            end
         end
     end
-    # Facets should be resolved at this stage not propagated
 
-    wraplevel!(e)
     e
 end
 
-
-# used in GroupMark and VG : 
-#    - to update the group paths by appending the current group
-#    - updating the children of this group element
-function wraplevel!(e::VGElement)
-    tracks = e.tracking
-
-    # assign orphan mentions to this group
-    for (el, gr) in tracks.mentions
-        if gr === nothing
-            tracks.mentions[el] = e
-        end
-    end
-
-    # assign orphan fixeddefs to this group
-    for (el, gr) in tracks.fixeddefs
-        if gr === nothing
-            tracks.fixeddefs[el] = e
-        end
-    end
-
-    # update the grouppaths
-    for (el, pos) in tracks.grouppaths
-        tracks.grouppaths[el] = (pos === nothing) ? [e] : [e; pos]
-    end
-    tracks.grouppaths[e] = []  # add this group too
-
-    # all those groups are children of current group
-    tracks.children[e] = keys(tracks.children)
-end

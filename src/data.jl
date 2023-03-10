@@ -10,9 +10,8 @@ const Facet = VGElement{:Facet}
 # translate  data.sym into {data="dataname", field = "sym"}
 function Base.getproperty(d::Union{Data,Facet}, sym::Symbol)
     # treat VGElement fieldnames as usual
-    (sym == :trie) && return getfield(d, :trie)
-    (sym == :tracking) && return getfield(d, :tracking)
-    # FIXME : issue if fields are named "tracking" or "trie"
+	(sym in fieldnames(VGElement)) && return getfield(d, sym)
+    # FIXME : issue if fields are named "tracking" or "trie" or id
 
     f = VGElement{:generic}()
     insert!(f, [:field], sym)
