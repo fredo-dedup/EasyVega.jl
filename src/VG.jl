@@ -26,6 +26,7 @@ function VGElement{:final}(;nargs...)
 
     paths = dijkstra_shortest_paths(deps, code_for(deps, f))
     positions = enumerate_paths(paths)
+    # foreach(e -> (length(e) > 0) && pop!(e), positions) # remove last
     # println(positions)
     
     anymoved = true
@@ -50,14 +51,10 @@ function VGElement{:final}(;nargs...)
     # println(groups)
     for (i,path) in enumerate(positions)
         (i == code_for(deps, f)) && continue # skip root
-        if length(path) == 0
+        if length(path) < 2
             gr = f
         else
-            if i in groups # group defs go 1 level up
-                idx = findlast( ip in groups for ip in path[1:end-1] )
-            else
-                idx = findlast( ip in groups for ip in path )
-            end
+            idx = findlast( ip in groups for ip in path[1:end-1] )
             gr = label_for(deps, path[idx])
         end
         el = label_for(deps, i)
