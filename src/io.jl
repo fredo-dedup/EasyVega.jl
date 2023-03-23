@@ -28,16 +28,20 @@ toJSON(io::IO, v::AbstractString) = print(io, "\"$v\"")
 toJSON(io::IO, v::Char) = print(io, "\"$v\"")
 toJSON(io::IO, v::Symbol) = print(io, "\"$v\"")
 toJSON(io::IO, v::Number) = print(io, "$v")
-toJSON(io::IO, v::Date) = print(io, "\"$v\"")
-# toJSON(io::IO, v::DateTime) = print(io, "\"$v\"")
-toJSON(io::IO, v::DateTime) = print(io, "$(round(Int64, Dates.datetime2unix(v)*1000))")
+
+function toJSON(io::IO, v::DateTime)
+    dtu = Dates.datetime2unix(v)*1000
+    dtu = round(Int64, dtu)
+    print(io, "$dtu")
+end
+toJSON(io::IO, v::Date) = toJSON(io, DateTime(v))
 
 toJSON(io::IO, v::Time) = print(io, "\"$v\"")
 toJSON(io::IO, v::Nothing) = print(io, "null")
 
 
-function Base.show(io::IO, m::MIME"text/plain", v::VG)
-    show(io, v.trie)  # do not show refs
+function Base.show(io::IO, m::MIME"text/plain", v::VGElement{:final})
+    show(io, trie(v))  # do not show refs
     return
 end
 
@@ -84,8 +88,8 @@ end
 
 Base.Multimedia.istextmime(::MIME{Symbol("application/vnd.vega.v5+json")}) = true
 
-function Base.show(io::IO, m::MIME"application/vnd.vega.v5+json", v::VG)
-    toJSON(io, v.trie)
+function Base.show(io::IO, m::MIME"application/vnd.vega.v5+json", v::VGElement{:final})
+    toJSON(io, trie(v))
 end
 
 # function Base.show(io::IO, m::MIME"image/svg+xml", v::VGSpec)
@@ -100,7 +104,44 @@ end
 #     writehtml_full(io, v)
 # end
 
-# Base.showable(m::MIME"text/html", v::VGSpec) = isdefined(Main, :PlutoRunner)
-# function Base.show(io::IO, m::MIME"text/html", v::VGSpec)
-#     writehtml_partial_script(io, v)
-# end
+Base.showable(m::MIME"text/html", v::VGElement{:final}) = isdefined(Main, :PlutoRunner)
+function Base.show(io::IO, m::MIME"text/html", v::VGElement{:final})
+    writehtml_partial_script(io, v)
+end
+
+"""
+Creates a HTML script + div block for showing the plot (typically for Pluto).
+VegaLite js files are loaded from the web using script tags.
+"""
+function writehtml_partial_script(io::IO, v::VGElement{:final})
+    divid = "vg" * randstring(10)
+
+    print(io, """
+    <style media="screen">
+        .vega-actions a {
+        margin-right: 10px;
+        font-family: sans-serif;
+        font-size: x-small;
+        font-style: italic;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <div id="$divid"></div>
+    <script>
+        var spec = """
+    )
+
+    toJSON(io, trie(v))
+
+    print(io,"""
+        ;
+        var opt = {
+        mode: "vega",
+        renderer: "svg",
+        actions: true
+        };
+        vegaEmbed("#$divid", spec, opt);
+    </script>
+    """)
+end

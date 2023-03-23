@@ -8,10 +8,10 @@
 elements_counter::Int = 1
 
 struct VGElement{T}
-    trie::VGTrie
-    tracking
-    id::Int
-    function VGElement{T}(trie, tracking) where {T}
+    __trie::VGTrie
+    __tracking
+    __id::Int
+    function VGElement{T}(trie::VGTrie, tracking) where {T}
         global elements_counter
         elements_counter += 1
         new(trie, tracking, elements_counter)
@@ -20,11 +20,13 @@ end
 
 function idof(s::VGElement{T}) where T
     prefix = String(T)[1:2]
-    n = s.id
+    n = s.__id
     "$prefix$n"
 end
 
 kindof(::VGElement{T}) where T = T
+trie(e::VGElement) = e.__trie
+depgraph(e::VGElement) = e.__tracking.depgraph
 
 # valid value for tree leaves
 const LeafType = Union{
@@ -48,7 +50,7 @@ end
 
 
 function Base.insert!(e::VGElement, index::Vector, item::LeafType)
-    e.trie[index] = item
+    trie(e)[index] = item
 end
 
 
@@ -71,8 +73,8 @@ function Base.insert!(e::VGElement, index::Vector, item::VGElement{T}) where {T}
         insert!(e, index, idof(item))
     else
         # add the trie to the trie of e 
-        for k in keys(item.trie)
-            insert!(e, vcat(index, k), item.trie[k])
+        for k in keys(trie(item))
+            insert!(e, vcat(index, k), trie(item)[k])
         end
     end
     updateTracking!(e, index, item)
@@ -102,7 +104,7 @@ end
 
 ################ named VGElements   ###########################################
 
-# map from VGElement type to field map for final VGElement
+# map from named VGElement type to definition field 
 DefName = Dict(
     :Mark => :marks,
     :Signal => :signals,
@@ -110,6 +112,8 @@ DefName = Dict(
     :Data => :data,
     :Facet => nothing,  # this one goes in GroupMarks, no def necessary
     :Group => :marks,
+    :Projection => :projections,
+    :Style => :config,  # FIXME: should go in config/styles
 )
 
 isnamed(e::VGElement{T}) where {T} = T in keys(DefName)
@@ -119,12 +123,10 @@ isnamed(e::VGElement{T}) where {T} = T in keys(DefName)
 
 struct Tracking
     depgraph::MetaGraph # dependency graph between elements
-    # groupgraph::MetaGraph
 end
 
 Tracking() = Tracking(
     MetaGraph(DiGraph(), Label=VGElement, VertexData=Bool),
-    # MetaGraph(DiGraph(), Label=VGElement, VertexData=Set)
 )
 
 function Base.show(io::IO, t::Tracking)
@@ -134,7 +136,7 @@ function Base.show(io::IO, t::Tracking)
     println(io, labs)
 
     println(io, "dependencies :")
-    println(io, [ "$(labs[e.src]) -> $(labs[e.dst])" for e in edges(t.depgraph)])
+    println(io, [ "$(labs[e.src]) -> $(labs[e.dst])" for e in edges(deps)])
 end
 
 
@@ -146,8 +148,8 @@ end
 
 
 function updateTracking!(e::VGElement, index::Vector, item::VGElement)
-    depg = e.tracking.depgraph
-    ndepg = item.tracking.depgraph
+    depg = depgraph(e)
+    ndepg = depgraph(item)
 
     #### update dependency graph with depgraph of item
     for edg in edges(ndepg)
@@ -179,7 +181,7 @@ function isdef(e::VGElement, index::Vector, allowedtypes=values(DefName))
     isa(index[end], Int) || return false
     (index[end-1] in allowedtypes) || return false
     # check now that we are in root node or a GroupMark
-    (kindof(e) == :prefinal) && return true
+    (kindof(e) == :final) && return true
     (kindof(e) == :Group) && return true
     return false
 end

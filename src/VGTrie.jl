@@ -40,7 +40,7 @@ end
 
 function Base.getindex(t::VGTrie, key::Vector)
     node = subtrie(t, key)
-    if (node != nothing) && node.is_key
+    if (node !== nothing) && node.is_key
         return node.value
     end
     throw(KeyError("key not found: $key"))
@@ -60,12 +60,12 @@ end
 
 function Base.haskey(t::VGTrie, key::Vector)
     node = subtrie(t, key)
-    (node != nothing) && node.is_key
+    (node !== nothing) && node.is_key
 end
 
 function Base.get(t::VGTrie, key::Vector, notfound)
     node = subtrie(t, key)
-    if (node != nothing) && node.is_key
+    if (node !== nothing) && node.is_key
         return node.value
     end
     return notfound
@@ -83,30 +83,71 @@ end
 
 function keys_with_prefix(t::VGTrie, prefix::Vector)
     st = subtrie(t, prefix)
-    (st != nothing) ? keys(st, prefix) : []
+    (st !== nothing) ? keys(st, prefix) : []
 end
 
 #####  printing  #######################################
 
 ## By default, print the tree of the spec
 function Base.show(io::IO, t::VGTrie)
-    print(io, "VGTrie")
-    printtrie(io, t)
+    # printtrie(io, t)
+    vs = toStrings(t)
+    for v in vs
+        println(io, v)
+    end
 end
 
-function printtrie(io::IO, t::VGTrie; indent=0)
-    spaces = " " ^ indent
-    t.is_key && print(io, " = ", t.value)
+# function printtrie(io::IO, t::VGTrie; indent=0)
+#     spaces = " " ^ indent
+#     t.is_key && print(io, ": ", t.value)
     
-    if length(t.children) > 0
-        print(io, " →")
-    end
-    println(io)
+#     if length(t.children) > 0
+#         print(io, " (")
+#         for k in keys(t.children)
+#             print(io, spaces, "  ", k)
+#             printtrie(io, t.children[k], indent=indent+2)
+#         end
+#         print(io, " )")
+#     end
+#     println(io)
+# end
 
-    for k in keys(t.children)
-        print(io, spaces, "  ", k)
-        printtrie(io, t.children[k], indent=indent+2)
+function toStrings(t::VGTrie)::Vector
+    t.is_key && (length(t.children) > 0) && error("malformed trie")
+    
+    if t.is_key
+        io = IOBuffer()
+        printstyled(IOContext(io, :color => true, :compact => true), 
+            t.value, color=:yellow)
+        res = [ String(take!(io)) ]
+    else
+        ks = sort(collect(keys(t.children)))
+        if length(ks) > 20  # shorten long arrays
+            ks = [ ks[1:5] ; nothing ; ks[end-4:end] ]
+        end
+        
+        res = AbstractString[]
+        for k in ks
+            if (k === nothing)  # ellipsis for long arrays
+                vs = ["..."]
+            else
+                vs = toStrings(t.children[k])
+                if length(vs) > 1  # multiline result
+                    vs = vcat([ "$k: "], [ " ." * v for v in vs ])
+                else # single line
+                    vs[1] = "$k: " * vs[1]
+                end
+            end
+            append!(res, vs)
+        end
+        # if all of res can be squeezed in a single line, do it
+        if !isempty(res)
+            if sum(length, res) < 80
+                res = [ "(" * join(res, ", ") * ")" ]
+            else
+                res = [ " " * v for v in res]
+            end
+        end
     end
+    res
 end
-
-
