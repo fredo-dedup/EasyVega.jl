@@ -9,6 +9,13 @@ Vega [(link)](https://vega.github.io/vega/) is a grammar for visualization using
 
 This being said, Vega provides a variety of visuals and interactivity features that may be what you are looking for, and this Julia package brings a few syntax shortcuts that will make it easier to use.
 
+
+[ <img src="./examples/simpleline.png" width="200" height="200" /> ](examples/simpleline.jl)
+[ <img src="./examples/simplebars.png" width="200" height="200" /> ](examples/simplebars.jl)
+[ <img src="./examples/facetpie.png" width="200" height="200" /> ](examples/facetpie.jl)
+
+
+
 ## Direct spec creation
 
 This is not the recommended way to use EasyVega but this will help understand some aspects of the EasyVega syntax. 
@@ -75,7 +82,7 @@ VG(
 
 Currently, the allowed values (on the right hand side of the '=' sign) can be a `Number`, a `Date` / `DateTime`, an `AbstractString` / `Symbol` / `Char` (all passed as strings in the JSON) and `nothing` as the JSON equivalent for `null`.
 
-# Define named spec elements as separate variables
+## Define named spec elements as separate variables
 
 The recommended way to use EasyVega is to build the plot step by step.
 
@@ -131,7 +138,7 @@ Currently the named elements that can be created this way are `Data()`, `Facet()
 
 **All the other Vega spec elements (config, axes, legends, layout, triggers, ..) are not named and should be defined explicitly in GroupMarks or the final VG()**
 
-# Pairs for channel encodings
+## Pairs for channel encodings
 
 EasyVega has a further syntax shortcuts for describing the channel encodings in marks (including group marks).
 1. the right hand side defining the channel can be simplified : 
@@ -166,16 +173,15 @@ SymbolMark(
     :fill               => :black, 
     :size               => sscale(100),
     :update_fillOpacity => 0.2, 
-    )
 )
 ```
 
 
-# Rendering
+## Rendering
 
 Rendering should work in Pluto and Visual Studio Code without issues. Other front end clients need to be implemented.
 
-# Debugging plots
+## Debugging plots
 
 Since the rendering of the JSON Vega specs occurs in a javascript runtime, EasyVega (or Vega.jl/VegaLite.jl for that matter) cannot surface easily the error messages to help debugging. This is a fundamental disadvantage compared to full Julia plotting packages.
 
@@ -207,7 +213,7 @@ clipboard(String(take!(io)))
 ```
 
 
-# Limitations / Future work
+## Limitations / Future work
 - Limited number of IDEs supported 
 - No SVG / PNG file export yet
 - No Vega schema compliance checking for the generated Vega JSON produced

@@ -2,8 +2,13 @@ using DataFrames
 N = 100
 tb = DataFrame(x=randn(N), y=randn(N), a=rand("ABC", N))
 
-
 using EasyVega
+
+# include("../src/EasyVega.jl")
+# using Main.EasyVega
+
+
+###########
 
 
 ###########
@@ -20,9 +25,21 @@ smark = SymbolMark(shape="circle",
     size_value=100)
 )
 
+smark = SymbolMark(shape="circle", 
+    :xc            => xscale(dat2.x), 
+    :yc            => yscale(dat2.y), 
+    :fill          => cscale(dat2.a), 
+    :fillOpacity   => 0.2, 
+    :stroke        => cscale(dat2.a), 
+    :strokeOpacity => 1,
+    :size          => 100
+)
+
+
 ttt = VG(width=400, height=300, padding=20, background= "#fed",
     axes = [ xscale(orient="bottom"), yscale(orient="left") ],
     marks= [ smark ])
+EasyVega.trie(ttt)
 
 lmark = LineMark(encode_enter=(
     x=xscale(dat2.x), 
@@ -45,16 +62,58 @@ ttt = VG(width=400, height=300, padding=20, background= "#fed",
 
 dat = Data(
     values = [
-        (x= 0, y= 28, c=0), (x= 0, y= 20, c=1),
-        (x= 1, y= 43, c=0), (x= 1, y= 35, c=1),
-        (x= 2, y= 81, c=0), (x= 2, y= 10, c=1),
-        (x= 3, y= 19, c=0), (x= 3, y= 15, c=1),
-        (x= 4, y= 52, c=0), (x= 4, y= 48, c=1),
-        (x= 5, y= 24, c=0), (x= 5, y= 28, c=1),
-        (x= 6, y= 87, c=0), (x= 6, y= 66, c=1),
-        (x= 7, y= 17, c=0), (x= 7, y= 27, c=1),
-        (x= 8, y= 68, c=0), (x= 8, y= 16, c=1),
-        (x= 9, y= 49, c=0), (x= 9, y= 25, c=1)
+        (x= 0, y= 28), 
+        (x= 1, y= 43), 
+        (x= 2, y= 81), 
+        (x= 3, y= 19), 
+        (x= 4, y= 52), 
+      ]
+)
+
+xscale = LinearScale(range="width",  domain=dat.x)
+yscale = LinearScale(range="height", domain=dat.y)
+
+lmark = LineMark(
+    encode_enter=(
+        x= xscale(dat.x),
+        y= yscale(dat.y),
+    ),
+)
+
+VG(
+    width=300, height=200, background="white",
+    axes = [ xscale(orient="bottom"), yscale(orient="left") ],
+    marks= [ lmark ] 
+)
+EasyVega.trie(ttt)
+
+
+VG(
+    width=100, 
+    height=100, 
+    marks=[(
+        type="symbol", 
+        encode=(
+            enter=(
+                x=(value=50,), 
+                y=(value=50,), 
+                size=(value=20,) 
+            ,)
+        ,)
+    )]
+)
+
+
+
+############
+dat = Data(
+    values = [
+        (x= 0, y= 28, c='A'), (x= 0, y= 20, c='B'),
+        (x= 1, y= 43, c='A'), (x= 1, y= 35, c='B'),
+        (x= 2, y= 81, c='A'), (x= 2, y= 10, c='B'),
+        (x= 3, y= 19, c='A'), (x= 3, y= 15, c='B'),
+        (x= 4, y= 52, c='A'), (x= 4, y= 48, c='B'),
+        (x= 5, y= 24, c='A'), (x= 5, y= 28, c='B'),
       ],
     transform=[
         (type="stack", groupby=[:x], sort_field=:c, field=:y)
@@ -436,7 +495,7 @@ ttt = VG(width=500, height=200, padding=20, background= "#fed",
 
 using InteractiveUtils
 io = IOBuffer()
-EasyVega.toJSON(io,ttt.trie)
+EasyVega.toJSON(io,EasyVega.trie(ttt))
 clipboard(String(take!(io)))
 
 

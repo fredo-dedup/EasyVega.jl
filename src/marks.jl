@@ -23,33 +23,27 @@ sm = SymbolMark(shape="circle",
 )
 ```
 """
+ArcMark, AreaMark, GroupMark, ImageMark, LineMark, PathMark, RectMark, RuleMark, ShapeMark, SymbolMark, TextMark, TrailMark
+
+
+
 ArcMark(pargs...;nargs...)    = preMark(pargs...;type=:arc, nargs...)
-"..."
 AreaMark(pargs...;nargs...)   = preMark(pargs...;type=:area, nargs...)
-"..."
 ImageMark(pargs...;nargs...)  = preMark(pargs...;type=:image, nargs...)
-"..."
 LineMark(pargs...;nargs...)   = preMark(pargs...;type=:line, nargs...)
-"..."
 PathMark(pargs...;nargs...)   = preMark(pargs...;type=:path, nargs...)
-"..."
 RectMark(pargs...;nargs...)   = preMark(pargs...;type=:rect, nargs...)
-"..."
 RuleMark(pargs...;nargs...)   = preMark(pargs...;type=:rule, nargs...)
-"..."
 ShapeMark(pargs...;nargs...)  = preMark(pargs...;type=:shape, nargs...)
-"..."
 SymbolMark(pargs...;nargs...) = preMark(pargs...;type=:symbol, nargs...)
-"..."
 TextMark(pargs...;nargs...)   = preMark(pargs...;type=:text, nargs...)
-"..."
 TrailMark(pargs...;nargs...)  = preMark(pargs...;type=:trail, nargs...)
 
 
 
 ### specialized inserts for Marks
 # translates encodings to valid Vega spec
-function Base.insert!(e::Mark, index::Vector, item::VGElement)
+function Base.insert!(e::Union{Mark,Group}, index::Vector, item::VGElement)
     # println(index, " -- ", item)
     if (index[1] == :encode) && (length(index) == 3) 
         if kindof(item) == :Signal
@@ -78,7 +72,7 @@ function Base.insert!(e::Mark, index::Vector, item::VGElement)
     updateTracking!(e, index, item)
 end
 
-function Base.insert!(e::Mark, index::Vector, item::LeafType)
+function Base.insert!(e::Union{Mark,Group}, index::Vector, item::LeafType)
     # println(index, " - ", item)
     if (index[1] == :encode) && (length(index) == 3)
         trie(e)[[index; :value]] = item
