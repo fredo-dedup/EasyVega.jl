@@ -38,7 +38,10 @@ function VG(;nargs...)
                 if minpath != path
                     anymoved = true
                     positions[i] = minpath
-                    # println("$i : $path => $minpath")
+
+                    # ppath = map(i->label_for(deps,i), path)
+                    # pminp = map(i->label_for(deps,i), minpath)
+                    # println("$(label_for(deps,i)) : $(join(ppath, "/")) => $(join(pminp, "/"))")
                 end
             end
         end
@@ -53,10 +56,13 @@ function VG(;nargs...)
         if length(path) < 2
             gr = f
         else
-            idx = findlast( ip in groups for ip in path[1:end-1] )
+            # groups need to go up 1 level
+            ppaths = (i in groups) ? path[1:end-1] : path[1:end]
+            idx = findlast( ip in groups for ip in ppaths )
             gr = label_for(deps, path[idx])
         end
         el = label_for(deps, i)
+        # println("$el in $gr")
         defpos[el] = gr 
     end
     # println(defpos)

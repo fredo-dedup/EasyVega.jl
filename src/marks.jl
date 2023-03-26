@@ -4,6 +4,7 @@ export ArcMark, AreaMark, GroupMark, ImageMark, LineMark, PathMark, RectMark,
     RuleMark, ShapeMark, SymbolMark, TextMark, TrailMark
 
 const Mark = VGElement{:Mark}
+const Group = VGElement{:Group}
 
 """
     ArcMark(), AreaMark(), GroupMark(), ImageMark(), LineMark(), PathMark(), RectMark(), 
@@ -163,7 +164,7 @@ function GroupMark(pargs...; nargs...)
     #  - if no facet, use data
     if subtrie(trie(e), [:from]) === nothing
         deps = depgraph(e)
-        dorf = [ label_for(deps,i) for i in dfs_parents(deps, code_for(deps, e)) ]
+        dorf = [ label_for(deps,i) for i in outneighbors(deps, code_for(deps, e)) ]
         filter!(e -> kindof(e) in [:Facet, :Data], dorf)
 
         if length(dorf) > 0
@@ -171,7 +172,8 @@ function GroupMark(pargs...; nargs...)
             is = findfirst( kindof.(dorf) .== :Facet )
             (is === nothing) && ( is = findfirst( kindof.(dorf) .== :Data ) )
 
-            cfd = label_for(deps, is)
+            cfd = dorf[is] 
+
             (length(dorf)>1) && warning("multiple data/facets in this group, using $cfd, explicitly set it if not correct")
 
             if kindof(cfd) == :Facet
