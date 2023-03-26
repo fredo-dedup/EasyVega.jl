@@ -13,10 +13,12 @@ This being said, Vega provides a variety of visuals and interactivity features t
 [ <img src="./examples/simpleline.png" width="200" height="200" /> ](examples/simpleline.jl)
 [ <img src="./examples/simplebars.png" width="200" height="200" /> ](examples/simplebars.jl)
 [ <img src="./examples/facetpie.png" width="200" height="200" /> ](examples/facetpie.jl)
+[ <img src="./examples/multipleplots.svg" width="200" height="200" /> ](examples/multipleplots.jl)
+[ <img src="./examples/worldmap.svg" width="200" height="200" /> ](examples/worldmap.jl)
 
 
 
-## Direct spec creation
+## Direct Vega specification creation
 
 This is not the recommended way to use EasyVega but this will help understand some aspects of the EasyVega syntax. 
 
@@ -144,7 +146,7 @@ EasyVega has a further syntax shortcuts for describing the channel encodings in 
 1. the right hand side defining the channel can be simplified : 
     - for simple values : `.. = (value= x,)` can be replaced with `.. = x`
     - for data fields : `.. = (field= x,)` can be replaced with `.. = dat.x`  (with `dat` used by EasyVega to fill in the `from_data` field of the mark if it is not specified explictily)
-    - for signals : `.. = (signal= `*`expression`*`,)` can be replaced with `.. = Signal(`*`expression`*`)`
+    - for all other cases, follow the Vega syntax.
 2. the mapping between channels and values / fields can be specified as a `Pair` in a positional argument of the mark function. The left hand side of the Pair can be either a single symbol which will be added to the `enter` encoding set by default, or two symbols associated by an underscore, in which case the first symbol will be interpreted as the encoding set (e.g. `update` / `hover` / `exit` / etc.) and the second one as the channel name.
 
 For example, using both shortcuts above, this mark specification : 
