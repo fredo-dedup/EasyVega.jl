@@ -15,6 +15,9 @@ This being said, Vega provides a variety of visuals and interactivity features t
 [ <img src="./examples/facetpie.png" width="200" height="200" /> ](examples/facetpie.jl)
 [ <img src="./examples/multipleplots.svg" width="200" height="200" /> ](examples/multipleplots.jl)
 [ <img src="./examples/worldmap.svg" width="200" height="200" /> ](examples/worldmap.jl)
+[ <img src="./examples/packedbubbles.svg" width="200" height="200" /> ](examples/packedbubbles.jl)
+[ <img src="./examples/sunburst.svg" width="200" height="200" /> ](examples/sunburst.jl)
+[ <img src="./examples/treelayout.svg" style="width:200px; height:200px; object-fit:none; object-position: 50% 0" /> ](examples/treelayout.jl)
 
 
 
