@@ -20,6 +20,7 @@ This being said, Vega provides a variety of visuals and interactivity features t
 [ <img src="./examples/treelayout.svg" style="width:200px; height:200px; object-fit:none; object-position: 50% 0" /> ](examples/treelayout.jl)
 [ <img src="./examples/density_and_contours.svg" width="200" height="200" /> ](examples/density_and_contours.jl)
 [ <img src="./examples/voronoi.svg" width="200" height="200" /> ](examples/voronoi.jl)
+[ <img src="./examples/loess.svg" width="200" height="200" /> ](examples/loess.jl)
 
 
 
