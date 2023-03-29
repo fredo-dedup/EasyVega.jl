@@ -69,8 +69,8 @@ nodes = SymbolMark(
 
 # Textmark to show the category name 
 #  this textmark is not based on a Data but on another Mark : nodes.
-#  Data as sources allow to modify / annotate the mark, here we are  
-#  simply printing a letter at the center of the bubble. 
+#  Mark as sources allow to modify / annotate the mark, here we are  
+#  printing a letter at the center of the bubble. 
 txtmark = TextMark(
   # need to be specific here for the from_data field because the source is 
   #  another mark not data.

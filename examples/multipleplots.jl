@@ -70,7 +70,7 @@ grp3 = begin
 end
 
 
-g = VG(width=200, height=200, padding=20, background= "white", 
+VG(width=200, height=200, padding=20, background= "white", 
 	layout= (columns=2, padding=20),
     marks= [ grp1, grp2, grp3 ],
 )

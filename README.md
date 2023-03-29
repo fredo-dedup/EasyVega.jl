@@ -18,6 +18,8 @@ This being said, Vega provides a variety of visuals and interactivity features t
 [ <img src="./examples/packedbubbles.svg" width="200" height="200" /> ](examples/packedbubbles.jl)
 [ <img src="./examples/sunburst.svg" width="200" height="200" /> ](examples/sunburst.jl)
 [ <img src="./examples/treelayout.svg" style="width:200px; height:200px; object-fit:none; object-position: 50% 0" /> ](examples/treelayout.jl)
+[ <img src="./examples/density_and_contours.svg" width="200" height="200" /> ](examples/density_and_contours.jl)
+[ <img src="./examples/voronoi.svg" width="200" height="200" /> ](examples/voronoi.jl)
 
 
 
@@ -134,8 +136,8 @@ VG(
 ```
 
 There are several things going on in this short example : 
-- the Data element creation `dat = Data(...)` allows to later refer to individual data fields with `dat.x` (used in the subsequent scale and mark definitions).
-- The scale creation `yscale = LinearScale(...)` provides a function `xscale(..)` indicating that the scale should be applied to the arguments, or more precisely generating an element with the scale annotation (used in the mark and axes definitions).
+- the Data element creation `dat = Data(...)` allows to later refer to individual data fields with `dat.x` / `dat.y` (used in the subsequent scale and mark definitions).
+- The scale creation `xscale = LinearScale(...)` provides a function `xscale(..)` indicating that the scale should be applied to the arguments, or more precisely generating an element with the scale annotation (used in the mark and axes definitions).
 - The mark creation `lmark = LineMark(...)` does not need to specify the data source with a `from_data= dat`, EasyVega infers this dependance from the encodings of the 'x' and 'y' channels. 
 - In the final function `VG(..)`, you only need to mention the `lmark` variable for EasyVega to pull together the scales and data definitions into the final Vega spec, they do not need to be explicitly mentionned.
 
@@ -149,6 +151,7 @@ EasyVega has a further syntax shortcuts for describing the channel encodings in 
 1. the right hand side defining the channel can be simplified : 
     - for simple values : `.. = (value= x,)` can be replaced with `.. = x`
     - for data fields : `.. = (field= x,)` can be replaced with `.. = dat.x`  (with `dat` used by EasyVega to fill in the `from_data` field of the mark if it is not specified explictily)
+    - for scaled data fields : `.. = (field= x, scale= myscale)` can be replaced with `.. = myscale(dat.x)`
     - for all other cases, follow the Vega syntax.
 2. the mapping between channels and values / fields can be specified as a `Pair` in a positional argument of the mark function. The left hand side of the Pair can be either a single symbol which will be added to the `enter` encoding set by default, or two symbols associated by an underscore, in which case the first symbol will be interpreted as the encoding set (e.g. `update` / `hover` / `exit` / etc.) and the second one as the channel name.
 

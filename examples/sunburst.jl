@@ -45,13 +45,3 @@ VG( width=400, height=400, background= :white,
   maks = [rma]
 )
 
-
-{
-    "$schema": "https://vega.github.io/schema/vega/v5.json",
-    "description": "An example of a space-fulling radial layout for hierarchical data.",
-    "width": 600,
-    "height": 600,
-    "padding": 5,
-    "autosize": "none",
-
-    
