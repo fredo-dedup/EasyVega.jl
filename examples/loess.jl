@@ -36,8 +36,7 @@ trend = Data(
 )
 
 
-# define the scale (can't use the movies.xyz shortcut here because the field names have spaces
-#   which prevent using symbols for the getproperty )
+# define the scale (can't use the movies.xyz shortcut here because the field has spaces)
 xscale = LinearScale(range="width", domain=(data=movies, field="Rotten Tomatoes Rating"))
 yscale = LinearScale(range="height", domain=(data=movies, field="IMDB Rating"))
 
