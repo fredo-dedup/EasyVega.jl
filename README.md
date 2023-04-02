@@ -1,6 +1,10 @@
 # EasyVega
 
 
+[![CI](https://github.com/fredo-dedup/EasyVega.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/fredo-dedup/EasyVega.jl/actions/workflows/ci.yml)
+[![CompatHelper](https://github.com/fredo-dedup/EasyVega.jl/actions/workflows/CompatHelper.yml/badge.svg)](https://github.com/fredo-dedup/EasyVega.jl/actions/workflows/CompatHelper.yml)
+[![TagBot](https://github.com/fredo-dedup/EasyVega.jl/actions/workflows/TagBot.yml/badge.svg)](https://github.com/fredo-dedup/EasyVega.jl/actions/workflows/TagBot.yml)
+
 Julia bindings for the Vega plotting library.
 
 Vega [(link)](https://vega.github.io/vega/) is a grammar for visualization using the JSON format. It provides all the building blocks to generate simple or complex visuals with interactive features.
