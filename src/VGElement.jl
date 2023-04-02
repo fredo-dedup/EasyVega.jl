@@ -126,7 +126,7 @@ struct Tracking
 end
 
 Tracking() = Tracking(
-    MetaGraph(DiGraph(), Label=VGElement, VertexData=Bool),
+    MetaGraph(DiGraph(), label_type= VGElement, vertex_data_type= Bool),
 )
 
 function Base.show(io::IO, t::Tracking)
