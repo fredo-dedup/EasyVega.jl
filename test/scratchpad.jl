@@ -1,5 +1,5 @@
 using DataFrames
-N = 100
+N = 200
 tb = DataFrame(x=randn(N), y=randn(N), a=rand("ABC", N))
 
 using EasyVega
@@ -80,9 +80,7 @@ VG(width=800, height=300, padding=20, background= "#fed",
 ################
 
 using InteractiveUtils
-io = IOBuffer()
-EasyVega.toJSON(io,EasyVega.trie(ttt))
-clipboard(String(take!(io)))
+
 
 
 ################
@@ -92,3 +90,9 @@ io = IOBuffer()
 EasyVega.toJSON(io,ttt.trie)
 
 String(take!(io))
+
+
+using PkgTemplates
+
+t = Template(plugins=[GitHubActions()])
+t("EasyVega2")
