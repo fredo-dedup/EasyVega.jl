@@ -31,9 +31,9 @@ end
     insert!(e, [:abcd, 3], (i=4, j=:sym))
     @test trie(e)[[:abcd, 3, :i]] == 4
     @test trie(e)[[:abcd, 3, :j]] == :sym
-    @test_throws "type DataType not allowed" insert!(e, [:abcd, 3], Int)
+    @test_throws ErrorException("type DataType not allowed") insert!(e, [:abcd, 3], Int)
 
-    @test_throws "invalid key type" insert!(e, [:abcd, :xy], 1.5)
+    @test_throws ErrorException("invalid key type : xy is not a Int64") insert!(e, [:abcd, :xy], 1.5)
     
     m = Data(values=[(a=4,b="a"), (a=5,b="b")])
     n = GroupMark(:x => m.a, marks = [ 456, :abcd])
