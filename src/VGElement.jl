@@ -5,7 +5,7 @@
 # - they have an id, used for reference in final VG
 # - they hold their dependencies to other elements in the tracking field
 
-elements_counter::Int = 1
+elements_counter = 1
 
 struct VGElement{T}
     __trie::VGTrie
@@ -126,7 +126,7 @@ struct Tracking
 end
 
 Tracking() = Tracking(
-    MetaGraph(DiGraph(), Label=VGElement, VertexData=Bool),
+    MetaGraph(DiGraph(), label_type= VGElement, vertex_data_type= Bool),
 )
 
 function Base.show(io::IO, t::Tracking)
